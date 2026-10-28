@@ -46,7 +46,7 @@
         <dependency>
             <groupId>com.bgsoftware</groupId>
             <artifactId>SuperiorSkyblockAPI</artifactId>
-            <version>2024.4</version>
+            <version>latest</version>
             <scope>provided</scope>
         </dependency>
         <!-- Vault (Essentials l'utilise comme fournisseur d'économie) -->

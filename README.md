@@ -20,14 +20,17 @@ Si SuperiorSkyblock2 sur votre serveur est une autre version que `2024.4`, adapt
 1. Déposer le jar dans `plugins/`.
 2. Créer votre schématique d'hôtel de ville (`//copy` puis `//schem save hotel`), à l'endroit où vous voulez que la shulker posée soit le point d'origine (là où vous vous tenez au moment du `//copy`).
 3. La placer dans `plugins/HotelDeVille/schematics/hotel.schem` (nom modifiable dans `config.yml > hotel.schematic`).
-4. Régler `config.yml > oneblock.offset` pour viser votre bloc générateur (relatif au centre de l'île) et `minion.spawn-offset` pour la position du minion.
+4. Rien à régler pour le bloc générateur : sa position est lue dans `plugins/SuperiorSkyblock2/modules/OneBlock/config.yml` (`block-offset`). Si besoin : `config.yml > oneblock.offset-source: CONFIG`.
 
 ## Fonctionnement
 - À la création d'une île, le joueur reçoit la shulker. La poser sur son île construit l'hôtel (une seule fois par île, commun à tous les membres).
 - Suppression de l'île : hôtel, minion et stockage sont réinitialisés.
 - `/hotel` : menu. Chaque slot = une ressource du prochain niveau (ITEM, MONEY, XP, PLAYTIME). Clic = validation. Quand tout est validé, le timer d'amélioration démarre.
+- Le minion est invisible (aucune entité) : il casse le bloc générateur du OneBlock selon ses capacités et range les drops dans son stockage.
+- Bouton du menu : mettre le minion en route / l'arrêter. Quand le stockage est plein (plus aucun slot libre), il s'arrête automatiquement et prévient les membres en ligne.
 - Facteurs du minion (vitesse, stockage, monnaie, xp) : 12 valeurs chacun, indexées sur le niveau de l'hôtel (`config.yml > minion.factors`).
-- Le stockage s'ouvre via le menu, `/hotel storage` ou un clic droit sur le minion.
+- Le stockage s'ouvre via le menu ou `/hotel storage`.
+- `minion.break-mode` : `DIRECT` (outil du minion, fonctionne hors-ligne) ou `EVENT` (simule la casse par un membre connecté).
 
 ## Commandes et permissions
 - `/hotel` (alias `/hdv`) — `hotel.use` (par défaut : tous)
@@ -37,7 +40,7 @@ Si SuperiorSkyblock2 sur votre serveur est une autre version que `2024.4`, adapt
 ## Fichiers de configuration
 - `config.yml` : général, shulker, hôtel, OneBlock, minion, facteurs (12 niveaux)
 - `levels.yml` : ressources et durée pour chacun des niveaux 2 à 12
-- `menus.yml` : menu principal, titres, slots, items, noms, descriptions, remplissage
+- `menus.yml` : menu entièrement libre (aucune valeur par défaut réinjectée) : ajoutez/supprimez/déplacez des items, `action` (STORAGE, TOGGLE_MINION, CLOSE, NONE), `commands`, `states`, `slots`...
 - `messages.yml` : tous les messages
 
 Couleurs partout : `&c`, `&#RRGGBB`, `<#RRGGBB>`, `#RRGGBB`. Items partout : `MATERIAL` ou `nexo:nom_item`.
