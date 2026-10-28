@@ -34,6 +34,7 @@ hotel:
   paste-offset: { x: 0, y: 0, z: 0 }   # Décalage par rapport à la shulker posée
   ignore-air: false             # true = ne remplace pas les blocs existants par de l'air
   check-inside-island: true     # Refuse si la structure sort des limites de l'île
+  pickup-keep-other-blocks: true  # true = à la récupération, seuls les blocs de la schématique disparaissent (coffres, fours, etc. posés dedans restent)
   sound-build: "BLOCK_ANVIL_USE"        # Son joué à la construction ("" = aucun)
   sound-upgrade: "ENTITY_PLAYER_LEVELUP" # Son joué à la fin d'une amélioration
   sound-pickup: "ENTITY_ITEM_PICKUP"     # Son joué quand l'hôtel est récupéré via le menu ("" = aucun)
