@@ -74,10 +74,8 @@ public class DataManager {
             d.maxX = s.getInt("max.x");
             d.maxY = s.getInt("max.y");
             d.maxZ = s.getInt("max.z");
-            d.minionX = s.getDouble("minion.x");
-            d.minionY = s.getDouble("minion.y");
-            d.minionZ = s.getDouble("minion.z");
             d.level = Math.max(1, s.getInt("level", 1));
+            d.active = s.getBoolean("active", false);
             d.upgradeEnd = s.getLong("upgrade.end", 0);
             d.upgradeStart = s.getLong("upgrade.start", 0);
             d.upgradeTarget = s.getInt("upgrade.target", 0);
@@ -109,10 +107,8 @@ public class DataManager {
             yaml.set(p + "max.x", d.maxX);
             yaml.set(p + "max.y", d.maxY);
             yaml.set(p + "max.z", d.maxZ);
-            yaml.set(p + "minion.x", d.minionX);
-            yaml.set(p + "minion.y", d.minionY);
-            yaml.set(p + "minion.z", d.minionZ);
             yaml.set(p + "level", d.level);
+            yaml.set(p + "active", d.active);
             yaml.set(p + "upgrade.end", d.upgradeEnd);
             yaml.set(p + "upgrade.start", d.upgradeStart);
             yaml.set(p + "upgrade.target", d.upgradeTarget);

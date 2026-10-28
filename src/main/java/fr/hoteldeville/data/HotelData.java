@@ -17,9 +17,11 @@ public final class HotelData {
     public String world;
     public int pasteX, pasteY, pasteZ;
     public int minX, minY, minZ, maxX, maxY, maxZ;
-    public double minionX, minionY, minionZ;
 
     public int level = 1;
+
+    /** Le minion mine-t-il en ce moment ? (bouton démarrer / arrêter du menu) */
+    public boolean active = false;
 
     /** Amélioration en cours : fin (epoch ms), début (epoch ms), niveau visé. 0 = aucune. */
     public long upgradeEnd = 0;
@@ -34,9 +36,7 @@ public final class HotelData {
 
     // ── runtime (non sauvegardé) ──
     public transient Inventory inventory;
-    public transient UUID minionUuid;
     public transient long nextBreak = 0;
-    public transient boolean fullWarned = false;
 
     public HotelData(UUID islandId) {
         this.islandId = islandId;
