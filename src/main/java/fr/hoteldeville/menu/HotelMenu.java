@@ -213,6 +213,7 @@ public final class HotelMenu implements InventoryHolder {
         return switch (key.toLowerCase(Locale.ROOT)) {
             case "storage" -> "STORAGE";
             case "close" -> "CLOSE";
+            case "pickup", "move", "deplacer" -> "PICKUP";
             case "toggle", "minion", "start", "power" -> "TOGGLE_MINION";
             default -> "NONE";
         };
@@ -319,6 +320,7 @@ public final class HotelMenu implements InventoryHolder {
         switch (button.action()) {
             case "STORAGE" -> player.openInventory(plugin.hotels().storage(d));
             case "CLOSE" -> player.closeInventory();
+            case "PICKUP" -> plugin.hotels().pickupHotel(player, d);
             case "TOGGLE_MINION" -> {
                 plugin.hotels().toggleMinion(player, d);
                 render();
