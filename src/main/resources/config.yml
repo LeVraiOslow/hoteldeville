@@ -32,9 +32,6 @@ shulker:
 hotel:
   schematic: "hotel.schem"      # Fichier dans plugins/HotelDeVille/schematics/ (format WorldEdit/FAWE)
   paste-offset: { x: 0, y: 0, z: 0 }   # Décalage par rapport à la shulker posée
-  rotate-with-player: true      # true = la schématique est tournée dans le sens où regarde le joueur qui pose la shulker
-  schematic-facing: SOUTH       # Direction vers laquelle regarde l'AVANT de votre schématique telle qu'enregistrée (NORTH/EAST/SOUTH/WEST)
-                                # = la direction dans laquelle vous regardiez au moment du //copy
   paste-keep-existing: CONTAINERS  # Ce que la schématique fait des blocs déjà présents dans sa zone (l'air de la schématique n'efface jamais rien) :
                                 # NONE = remplace tout | CONTAINERS = garde coffres, fours, barils... | ALL = garde tout bloc déjà présent
   check-inside-island: true     # Refuse si la structure sort des limites de l'île
