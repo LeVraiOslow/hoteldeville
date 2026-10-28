@@ -4,6 +4,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,6 +18,12 @@ public final class HotelData {
     public String world;
     public int pasteX, pasteY, pasteZ;
     public int minX, minY, minZ, maxX, maxY, maxZ;
+
+    /** Rotation (0/90/180/270) appliquée à la schématique lors de la pose. */
+    public int rotation = 0;
+
+    /** Positions (packées, voir {@link #pack}) où un bloc existant a été conservé à la pose : jamais retirées. */
+    public Set<Long> kept = new HashSet<>();
 
     public int level = 1;
 
@@ -43,6 +50,10 @@ public final class HotelData {
 
     public HotelData(UUID islandId) {
         this.islandId = islandId;
+    }
+
+    public static long pack(int x, int y, int z) {
+        return ((long) x & 0x3FFFFFFL) << 38 | ((long) z & 0x3FFFFFFL) << 12 | ((long) y & 0xFFFL);
     }
 
     public boolean isUpgrading() {
