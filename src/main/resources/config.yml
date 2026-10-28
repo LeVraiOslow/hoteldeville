@@ -1,0 +1,141 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║                    HotelDeVille - config.yml                 ║
+# ╚══════════════════════════════════════════════════════════════╝
+# Couleurs supportées partout : &a &c &l ... ET hexadécimal (&#RRGGBB, <#RRGGBB> ou #RRGGBB)
+# Les items peuvent être : un MATERIAL vanilla (STONE) ou un item Nexo (nexo:nom_item)
+
+settings:
+  max-level: 12                 # Niveau maximum de l'hôtel de ville (12 par défaut)
+  autosave-seconds: 60          # Sauvegarde automatique des données
+  time-units:                   # Unités utilisées pour afficher les durées
+    day: "j"
+    hour: "h"
+    minute: "min"
+    second: "s"
+  number-format: "#,##0.##"     # Format des nombres affichés
+
+# ───────────────────────── SHULKER BOX ─────────────────────────
+shulker:
+  give-on-island-create: true   # Donne la shulker à la création de l'île
+  material: PURPLE_SHULKER_BOX  # Material vanilla ou nexo:nom_item
+  amount: 1
+  name: "&#a855f7&lHôtel de Ville"
+  lore:
+    - "&7Posez cette shulker sur votre île"
+    - "&7pour construire l'&fhôtel de ville&7."
+    - ""
+    - "&8Une seule par île."
+  glow: true
+
+# ───────────────────────── HÔTEL DE VILLE ─────────────────────────
+hotel:
+  schematic: "hotel.schem"      # Fichier dans plugins/HotelDeVille/schematics/ (format WorldEdit/FAWE)
+  paste-offset: { x: 0, y: 0, z: 0 }   # Décalage par rapport à la shulker posée
+  ignore-air: false             # true = ne remplace pas les blocs existants par de l'air
+  check-inside-island: true     # Refuse si la structure sort des limites de l'île
+  sound-build: "BLOCK_ANVIL_USE"        # Son joué à la construction ("" = aucun)
+  sound-upgrade: "ENTITY_PLAYER_LEVELUP" # Son joué à la fin d'une amélioration
+
+# ───────────────────────── ONEBLOCK ─────────────────────────
+# Position du bloc générateur du OneBlock, relative au centre de l'île.
+oneblock:
+  environment: NORMAL           # NORMAL, NETHER ou THE_END
+  offset: { x: 0, y: 0, z: 0 }  # Ajustez pour viser votre bloc générateur
+
+# ───────────────────────── MINION ─────────────────────────
+minion:
+  enabled: true
+  # Position d'apparition du minion, relative à la position de collage (shulker posée)
+  spawn-offset: { x: 0.5, y: 1.0, z: 0.5 }
+  name: "&6Minion &7[Niv. &e{level}&7]"
+  show-name: true
+  arms: true
+  small: false
+  base-plate: false
+  equipment:                    # Material ou nexo:nom_item ("" = rien)
+    helmet: "LEATHER_HELMET"
+    chestplate: "LEATHER_CHESTPLATE"
+    leggings: "LEATHER_LEGGINGS"
+    boots: "LEATHER_BOOTS"
+    hand: "IRON_PICKAXE"
+  click-action: STORAGE         # STORAGE (ouvre le stockage), MENU (ouvre /hotel) ou NONE
+  tool: "NETHERITE_PICKAXE"     # Outil utilisé pour calculer les drops
+  fire-break-event: true        # Appelle un BlockBreakEvent (compatible avec les plugins OneBlock qui régénèrent le bloc)
+  only-when-members-online: false  # true = ne mine que si un membre de l'île est connecté
+  on-storage-full: PAUSE        # PAUSE (le minion s'arrête) ou VOID (les drops sont perdus)
+  ignored-blocks: [AIR, CAVE_AIR, VOID_AIR, BEDROCK, BARRIER]
+  effects:
+    sound: "BLOCK_STONE_BREAK"  # "" = aucun
+    sound-volume: 0.4
+    particle: "CLOUD"           # "" = aucune
+    particle-count: 4
+
+  # Qui reçoit l'argent / l'xp gagné(e) en minant ?  LEADER ou ALL_MEMBERS
+  reward-target: LEADER
+
+  # Chaque facteur possède 12 niveaux = le niveau de l'hôtel de ville.
+  factors:
+    speed:                      # Secondes entre deux blocs minés
+      display-name: "&bVitesse de minage"
+      format: "{value}s / bloc"
+      levels:
+        1: 10.0
+        2: 9.0
+        3: 8.0
+        4: 7.0
+        5: 6.0
+        6: 5.0
+        7: 4.0
+        8: 3.5
+        9: 3.0
+        10: 2.5
+        11: 2.0
+        12: 1.5
+    storage:                    # Nombre de slots du stockage (multiple de 9, maximum 54)
+      display-name: "&6Stockage"
+      format: "{value} slots"
+      levels:
+        1: 9
+        2: 9
+        3: 18
+        4: 18
+        5: 27
+        6: 27
+        7: 36
+        8: 36
+        9: 45
+        10: 45
+        11: 54
+        12: 54
+    money:                      # Monnaie gagnée par bloc miné (Vault / Essentials)
+      display-name: "&aMonnaie"
+      format: "{value} $ / bloc"
+      levels:
+        1: 0.5
+        2: 1.0
+        3: 1.5
+        4: 2.0
+        5: 3.0
+        6: 4.0
+        7: 5.0
+        8: 7.0
+        9: 9.0
+        10: 12.0
+        11: 15.0
+        12: 20.0
+    xp:                         # Points d'expérience gagnés par bloc miné
+      display-name: "&dExpérience"
+      format: "{value} xp / bloc"
+      levels:
+        1: 0
+        2: 0
+        3: 1
+        4: 1
+        5: 2
+        6: 2
+        7: 3
+        8: 3
+        9: 4
+        10: 5
+        11: 6
+        12: 8

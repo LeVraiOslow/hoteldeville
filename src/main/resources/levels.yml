@@ -1,0 +1,283 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║                    HotelDeVille - levels.yml                 ║
+# ╚══════════════════════════════════════════════════════════════╝
+# Le niveau 1 est donné à la construction. Ici : le coût pour ATTEINDRE chaque niveau (2 à 12).
+#
+# Chaque ressource = un slot dans le menu /hotel. Le joueur clique dessus pour la valider.
+#
+# Types de ressources :
+#   ITEM     : item  (MATERIAL ou nexo:nom_item) + amount          -> pris dans l'inventaire du joueur
+#   MONEY    : amount                                               -> retiré de la balance (Vault/Essentials)
+#   XP       : amount (+ mode: LEVELS ou POINTS)                    -> retiré de l'expérience du joueur
+#   PLAYTIME : amount en MINUTES de temps de jeu                    -> vérifié (non consommé par défaut)
+#
+# Options communes (toutes facultatives) :
+#   slot: 20            -> force le slot (sinon ordre de menus.yml > main.requirement-slots)
+#   material: DIAMOND   -> remplace l'icône (MATERIAL ou nexo:nom_item)
+#   name: "&bTexte"     -> remplace le nom ({amount}, {have}, {display} disponibles)
+#   lore: [ ... ]       -> remplace la description
+#
+# time : durée de l'amélioration une fois toutes les ressources validées.
+#        Formats : 90 (secondes), 30s, 15m, 2h, 1d, 1d12h30m
+
+levels:
+  2:
+    time: 5m
+    requirements:
+      bois:
+        type: ITEM
+        item: OAK_LOG
+        amount: 64
+      pierre:
+        type: ITEM
+        item: COBBLESTONE
+        amount: 128
+      argent:
+        type: MONEY
+        amount: 1000
+
+  3:
+    time: 15m
+    requirements:
+      fer:
+        type: ITEM
+        item: IRON_INGOT
+        amount: 32
+      charbon:
+        type: ITEM
+        item: COAL
+        amount: 64
+      argent:
+        type: MONEY
+        amount: 5000
+      xp:
+        type: XP
+        amount: 5
+        mode: LEVELS
+
+  4:
+    time: 30m
+    requirements:
+      or:
+        type: ITEM
+        item: GOLD_INGOT
+        amount: 32
+      redstone:
+        type: ITEM
+        item: REDSTONE
+        amount: 64
+      argent:
+        type: MONEY
+        amount: 15000
+      temps:
+        type: PLAYTIME
+        amount: 60
+
+  5:
+    time: 1h
+    requirements:
+      diamant:
+        type: ITEM
+        item: DIAMOND
+        amount: 8
+      lapis:
+        type: ITEM
+        item: LAPIS_LAZULI
+        amount: 64
+      argent:
+        type: MONEY
+        amount: 40000
+      xp:
+        type: XP
+        amount: 10
+        mode: LEVELS
+      temps:
+        type: PLAYTIME
+        amount: 180
+
+  6:
+    time: 2h
+    requirements:
+      diamant:
+        type: ITEM
+        item: DIAMOND
+        amount: 24
+      emeraude:
+        type: ITEM
+        item: EMERALD
+        amount: 16
+      quartz:
+        type: ITEM
+        item: QUARTZ
+        amount: 64
+      argent:
+        type: MONEY
+        amount: 100000
+      xp:
+        type: XP
+        amount: 15
+        mode: LEVELS
+      temps:
+        type: PLAYTIME
+        amount: 360
+
+  7:
+    time: 4h
+    requirements:
+      diamant:
+        type: ITEM
+        item: DIAMOND_BLOCK
+        amount: 8
+      emeraude:
+        type: ITEM
+        item: EMERALD
+        amount: 48
+      verre:
+        type: ITEM
+        item: GLASS
+        amount: 128
+      argent:
+        type: MONEY
+        amount: 250000
+      xp:
+        type: XP
+        amount: 20
+        mode: LEVELS
+      temps:
+        type: PLAYTIME
+        amount: 720
+
+  8:
+    time: 8h
+    requirements:
+      netherite:
+        type: ITEM
+        item: NETHERITE_SCRAP
+        amount: 8
+      obsidienne:
+        type: ITEM
+        item: OBSIDIAN
+        amount: 64
+      emeraude:
+        type: ITEM
+        item: EMERALD_BLOCK
+        amount: 8
+      argent:
+        type: MONEY
+        amount: 600000
+      xp:
+        type: XP
+        amount: 25
+        mode: LEVELS
+      temps:
+        type: PLAYTIME
+        amount: 1200
+
+  9:
+    time: 12h
+    requirements:
+      netherite:
+        type: ITEM
+        item: NETHERITE_INGOT
+        amount: 4
+      etoile:
+        type: ITEM
+        item: NETHER_STAR
+        amount: 1
+      or:
+        type: ITEM
+        item: GOLD_BLOCK
+        amount: 32
+      argent:
+        type: MONEY
+        amount: 1500000
+      xp:
+        type: XP
+        amount: 30
+        mode: LEVELS
+      temps:
+        type: PLAYTIME
+        amount: 2400
+
+  10:
+    time: 1d
+    requirements:
+      netherite:
+        type: ITEM
+        item: NETHERITE_INGOT
+        amount: 8
+      etoile:
+        type: ITEM
+        item: NETHER_STAR
+        amount: 2
+      beacon:
+        type: ITEM
+        item: BEACON
+        amount: 1
+      argent:
+        type: MONEY
+        amount: 4000000
+      xp:
+        type: XP
+        amount: 35
+        mode: LEVELS
+      temps:
+        type: PLAYTIME
+        amount: 4800
+
+  11:
+    time: 1d12h
+    requirements:
+      netherite:
+        type: ITEM
+        item: NETHERITE_BLOCK
+        amount: 2
+      etoile:
+        type: ITEM
+        item: NETHER_STAR
+        amount: 4
+      elytre:
+        type: ITEM
+        item: ELYTRA
+        amount: 1
+      argent:
+        type: MONEY
+        amount: 10000000
+      xp:
+        type: XP
+        amount: 40
+        mode: LEVELS
+      temps:
+        type: PLAYTIME
+        amount: 9600
+
+  12:
+    time: 2d
+    requirements:
+      netherite:
+        type: ITEM
+        item: NETHERITE_BLOCK
+        amount: 4
+      etoile:
+        type: ITEM
+        item: NETHER_STAR
+        amount: 8
+      oeuf:
+        type: ITEM
+        item: DRAGON_EGG
+        amount: 1
+      # Exemple d'item Nexo comme ressource :
+      # special:
+      #   type: ITEM
+      #   item: nexo:mon_item_custom
+      #   amount: 5
+      argent:
+        type: MONEY
+        amount: 25000000
+      xp:
+        type: XP
+        amount: 50
+        mode: LEVELS
+      temps:
+        type: PLAYTIME
+        amount: 19200

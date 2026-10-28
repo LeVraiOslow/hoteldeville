@@ -1,0 +1,67 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║                  HotelDeVille - messages.yml                 ║
+# ╚══════════════════════════════════════════════════════════════╝
+# Couleurs : &a &c ... et hexadécimal (&#RRGGBB, <#RRGGBB>, #RRGGBB)
+
+prefix: "&8[&6Hôtel&8] &r"
+max: "&cMAX"
+
+general:
+  no-permission: "&cVous n'avez pas la permission."
+  player-only: "&cCette commande est réservée aux joueurs."
+  no-island: "&cVous devez avoir une île pour utiliser l'hôtel de ville."
+  no-hotel: "&cVotre île n'a pas encore d'hôtel de ville. Posez la shulker box !"
+  reloaded: "&aConfiguration rechargée."
+  unknown-command: "&cSous-commande inconnue. Faites &e/hotel help&c."
+  invalid-number: "&cNombre invalide : &f{value}"
+  player-not-found: "&cJoueur introuvable : &f{player}"
+  player-no-island: "&c{player} n'a pas d'île."
+
+help:
+  - "&6&lHôtel de Ville &7- Aide"
+  - "&e/hotel &7- Ouvre le menu"
+  - "&e/hotel storage &7- Ouvre le stockage du minion"
+  - "&e/hotel admin give <joueur> &7- Donne la shulker box"
+  - "&e/hotel admin setlevel <joueur> <niveau> &7- Change le niveau"
+  - "&e/hotel admin finish <joueur> &7- Termine l'amélioration"
+  - "&e/hotel admin reset <joueur> &7- Réinitialise l'hôtel"
+  - "&e/hotel admin reload &7- Recharge la configuration"
+
+shulker:
+  received: "&aVous avez reçu la shulker de l'&6hôtel de ville&a ! Posez-la sur votre île."
+  given: "&aShulker donnée à &f{player}&a."
+  not-in-island: "&cVous devez poser la shulker sur votre île."
+  not-your-island: "&cCette zone n'appartient pas à votre île."
+  already-built: "&cVotre île possède déjà un hôtel de ville."
+  out-of-bounds: "&cLa structure dépasserait les limites de votre île. Déplacez-vous."
+  schematic-missing: "&cSchématique introuvable : &f{file}&c. Contactez un administrateur."
+  worldedit-missing: "&cWorldEdit/FAWE est requis pour construire l'hôtel de ville."
+  paste-failed: "&cErreur lors de la construction de l'hôtel de ville."
+  built: "&aVotre &6hôtel de ville&a a été construit ! Utilisez &e/hotel&a."
+  built-members: "&f{player}&a a construit l'&6hôtel de ville&a de votre île."
+
+hotel:
+  reset: "&cL'hôtel de ville de votre île a été réinitialisé."
+  upgrading-wait: "&cUne amélioration est déjà en cours."
+  max-level: "&cL'hôtel de ville est déjà au niveau maximum."
+  requirement-validated: "&aRessource validée : &f{display}"
+  requirement-already: "&eCette ressource est déjà validée."
+  missing-item: "&cIl vous manque &f{missing}x {item}&c."
+  missing-money: "&cIl vous manque &f{missing} $&c."
+  missing-xp: "&cIl vous manque &f{missing}&c niveaux d'XP."
+  missing-xp-points: "&cIl vous manque &f{missing}&c points d'XP."
+  missing-playtime: "&cIl vous manque &f{missing}&c min de temps de jeu."
+  economy-error: "&cErreur d'économie, réessayez."
+  upgrade-started: "&aToutes les ressources sont validées ! Amélioration vers le niveau &e{level}&a lancée (&f{time}&a)."
+  upgrade-started-members: "&6{player}&a a lancé l'amélioration de l'hôtel de ville vers le niveau &e{level}&a."
+  upgrade-finished: "&6Votre hôtel de ville est maintenant au niveau &e{level}&6 !"
+
+minion:
+  storage-full: "&cLe stockage de votre minion est plein !"
+  not-yours: "&cCe minion n'appartient pas à votre île."
+
+admin:
+  level-set: "&aNiveau de l'hôtel de &f{player}&a défini à &e{level}&a."
+  upgrade-finished: "&aAmélioration terminée pour &f{player}&a."
+  no-upgrade: "&cAucune amélioration en cours."
+  hotel-reset: "&aHôtel de &f{player}&a réinitialisé."

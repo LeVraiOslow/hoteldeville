@@ -1,0 +1,127 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║                    HotelDeVille - menus.yml                  ║
+# ╚══════════════════════════════════════════════════════════════╝
+# Couleurs : &a &c ... et hexadécimal (&#RRGGBB, <#RRGGBB>, #RRGGBB)
+# Items : MATERIAL vanilla ou nexo:nom_item   (clé "material")
+# Slots : de 0 (haut gauche) à 53 (bas droite) pour 54 slots.
+#
+# Chaque item accepte : slot, material, amount, name, lore, glow, action (STORAGE, CLOSE ou NONE)
+# Placeholders disponibles dans chaque section : voir les commentaires.
+
+main:
+  # {level} = niveau actuel, {max} = niveau maximum
+  title: "&8Hôtel de Ville &7- Niveau &e{level}&7/&e{max}"
+  size: 54          # 9, 18, 27, 36, 45 ou 54
+
+  filler:           # Remplissage des slots vides
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+
+  # Slots utilisés (dans l'ordre) pour les ressources du niveau en cours.
+  # Une ressource peut forcer son slot avec "slot:" dans levels.yml.
+  requirement-slots: [20, 21, 22, 23, 24, 29, 30, 31, 32, 33]
+
+  items:
+    info:
+      slot: 4
+      material: NETHER_STAR
+      name: "&6&lHôtel de Ville"
+      glow: true
+      # {level} {max} {next_level}
+      lore:
+        - "&7Niveau actuel : &e{level}&7/&e{max}"
+        - "&7Prochain niveau : &a{next_level}"
+        - ""
+        - "&8Fournissez les ressources demandées"
+        - "&8pour lancer l'amélioration."
+
+    stats:
+      slot: 40
+      material: ENCHANTED_BOOK
+      name: "&e&lStatistiques du minion"
+      # {speed} {storage} {money} {xp} = valeur actuelle ; *_next = valeur au prochain niveau
+      lore:
+        - "&bVitesse &7: &f{speed} &8→ &a{speed_next}"
+        - "&6Stockage &7: &f{storage} &8→ &a{storage_next}"
+        - "&aMonnaie &7: &f{money} &8→ &a{money_next}"
+        - "&dExpérience &7: &f{xp} &8→ &a{xp_next}"
+
+    storage:
+      slot: 49
+      material: CHEST
+      name: "&6&lStockage du minion"
+      # {used} = slots utilisés, {capacity} = capacité
+      lore:
+        - "&7Récupérez les ressources minées."
+        - "&7Capacité : &f{used}&7/&f{capacity} slots"
+        - ""
+        - "&eClic pour ouvrir"
+
+    close:
+      slot: 53
+      material: BARRIER
+      name: "&cFermer"
+      lore: []
+
+  # Affiché à la place des ressources pendant une amélioration.
+  # {target_level} {time_left} {progress} (barre) {percent}
+  upgrading:
+    slot: 22
+    material: CLOCK
+    name: "&e&lAmélioration en cours..."
+    glow: true
+    lore:
+      - "&7Niveau visé : &a{target_level}"
+      - "&7Temps restant : &f{time_left}"
+      - "{progress} &7{percent}%"
+
+  # Affiché quand l'hôtel est au niveau maximum.
+  max-level:
+    slot: 22
+    material: DIAMOND_BLOCK
+    name: "&b&lNiveau maximum !"
+    glow: true
+    lore:
+      - "&7Votre hôtel de ville est"
+      - "&7au niveau maximum."
+
+  progress-bar:
+    length: 20
+    full: "&a|"
+    empty: "&7|"
+
+  # Affichage des ressources.
+  # (voir plus bas pour l'inventaire du stockage : section "storage")
+  requirement:
+    # Icône par défaut selon le type (les ITEM utilisent l'item demandé)
+    icons:
+      MONEY: GOLD_INGOT
+      XP: EXPERIENCE_BOTTLE
+      PLAYTIME: CLOCK
+    # Nom affiché ({display} dans name/lore). {amount} {item} disponibles.
+    display-names:
+      ITEM: "{amount}x {item}"
+      MONEY: "{amount} $"
+      XP: "{amount} niveaux d'XP"
+      XP_POINTS: "{amount} points d'XP"
+      PLAYTIME: "{amount} min de temps de jeu"
+    # Placeholders : {display} {amount} {have} {have_color} {item}
+    pending:
+      name: "&c✘ &f{display}"
+      lore:
+        - "&7Requis : &f{amount}"
+        - "&7Vous avez : {have_color}{have}"
+        - ""
+        - "&eClic pour valider"
+    validated:
+      material: LIME_STAINED_GLASS_PANE   # "" = garder l'icône d'origine
+      name: "&a✔ &f{display}"
+      glow: true
+      lore:
+        - "&aRessource validée !"
+
+# Inventaire de stockage du minion (la taille dépend du niveau, voir config.yml > minion.factors.storage)
+# {level} = niveau de l'hôtel, {capacity} = nombre de slots
+storage:
+  title: "&8Stockage du minion &7(Niv. {level})"

@@ -1,0 +1,22 @@
+name: HotelDeVille
+version: '${project.version}'
+main: fr.hoteldeville.HotelDeVillePlugin
+api-version: '26.2'
+description: Hôtel de ville et minions pour îles OneBlock (SuperiorSkyblock2)
+author: HotelDeVille
+depend: [SuperiorSkyblock2, Vault]
+softdepend: [Nexo, Essentials, WorldEdit, FastAsyncWorldEdit]
+
+commands:
+  hotel:
+    description: Ouvre le menu de l'hôtel de ville
+    usage: /hotel [storage|help|admin]
+    aliases: [hdv, townhall]
+
+permissions:
+  hotel.use:
+    description: Utiliser /hotel et le minion
+    default: true
+  hotel.admin:
+    description: Commandes d'administration
+    default: op
