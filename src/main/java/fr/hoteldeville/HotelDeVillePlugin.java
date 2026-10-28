@@ -4,6 +4,7 @@ import fr.hoteldeville.command.HotelCommand;
 import fr.hoteldeville.data.DataManager;
 import fr.hoteldeville.data.HotelData;
 import fr.hoteldeville.listener.MenuListener;
+import fr.hoteldeville.listener.ProtectionListener;
 import fr.hoteldeville.listener.CaptureListener;
 import fr.hoteldeville.listener.ShulkerListener;
 import fr.hoteldeville.listener.SkyblockListener;
@@ -57,6 +58,7 @@ public final class HotelDeVillePlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new ShulkerListener(this), this);
         Bukkit.getPluginManager().registerEvents(new CaptureListener(this), this);
         Bukkit.getPluginManager().registerEvents(new MenuListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new ProtectionListener(this), this);
 
         HotelCommand command = new HotelCommand(this);
         var cmd = getCommand("hotel");
