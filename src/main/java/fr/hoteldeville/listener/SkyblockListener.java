@@ -1,8 +1,9 @@
 package fr.hoteldeville.listener;
 
-import com.bgsoftware.superiorskyblock.api.events.IslandCreateEvent;
 import com.bgsoftware.superiorskyblock.api.events.IslandDisbandEvent;
+import com.bgsoftware.superiorskyblock.api.events.PostIslandCreateEvent;
 import com.bgsoftware.superiorskyblock.api.island.Island;
+import com.bgsoftware.superiorskyblock.api.wrappers.SuperiorPlayer;
 import fr.hoteldeville.HotelDeVillePlugin;
 import fr.hoteldeville.data.HotelData;
 import org.bukkit.Bukkit;
@@ -23,12 +24,14 @@ public class SkyblockListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onCreate(IslandCreateEvent event) {
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onCreate(PostIslandCreateEvent event) {
         if (!plugin.configs().config().getBoolean("shulker.give-on-island-create", true)) return;
-        UUID playerId = event.getPlayer().getUniqueId();
+        SuperiorPlayer owner = event.getPlayer();
+        if (owner == null) return;
+        UUID playerId = owner.getUniqueId();
 
-        // L'île est réellement créée quelques instants après l'événement : on donne l'item avec un petit délai.
+        // Petit délai : le joueur est téléporté sur son île juste après la création.
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Player p = Bukkit.getPlayer(playerId);
             if (p == null || !p.isOnline()) return;
@@ -40,7 +43,7 @@ public class SkyblockListener implements Listener {
             }
             plugin.hotels().giveShulker(p);
             plugin.configs().send(p, "shulker.received");
-        }, 40L);
+        }, 20L);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
