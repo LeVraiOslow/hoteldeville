@@ -14,7 +14,7 @@ Plugin Paper 26.2 pour îles OneBlock (SuperiorSkyblock2) : hôtel de ville à 1
 mvn clean package
 ```
 Le jar est généré dans `target/HotelDeVille-1.0.0.jar`. Java 25 requis.
-Si SuperiorSkyblock2 sur votre serveur est une autre version que `2024.4`, adaptez la version dans le `pom.xml`.
+La version de l'API SuperiorSkyblock2 se règle avec la propriété `ssb.api.version` du `pom.xml`.
 
 ## Installation
 1. Déposer le jar dans `plugins/`.
