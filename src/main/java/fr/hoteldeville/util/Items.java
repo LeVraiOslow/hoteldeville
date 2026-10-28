@@ -105,6 +105,21 @@ public final class Items {
         return buildAs(sec, sec.getString("material", "STONE"), kv);
     }
 
+    /** Comme build(), mais les clés présentes dans "override" remplacent celles de "base" (états du menu). */
+    public static ItemStack build(ConfigurationSection base, ConfigurationSection override, String... kv) {
+        if (override == null) return build(base, kv);
+        String material = override.getString("material", base.getString("material", "STONE"));
+        int amount = Math.max(1, override.getInt("amount", base.getInt("amount", 1)));
+        ItemStack stack = parse(material, amount);
+        if (stack == null) stack = new ItemStack(Material.BARRIER);
+        String name = override.contains("name") ? override.getString("name") : base.getString("name", null);
+        ConfigurationSection loreSrc = override.isList("lore") ? override : base;
+        List<String> lore = loreSrc.isList("lore") ? loreSrc.getStringList("lore") : null;
+        boolean glow = override.contains("glow") ? override.getBoolean("glow") : base.getBoolean("glow", false);
+        apply(stack, name, lore, glow, kv);
+        return stack;
+    }
+
     public static ItemStack buildAs(ConfigurationSection sec, String materialSpec, String... kv) {
         ItemStack stack = parse(materialSpec, Math.max(1, sec.getInt("amount", 1)));
         if (stack == null) stack = new ItemStack(Material.BARRIER);
