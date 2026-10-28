@@ -25,6 +25,7 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.Statistic;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.configuration.ConfigurationSection;
@@ -319,7 +320,7 @@ public class HotelManager {
                 try {
                     if (schematics == null) schematics = new SchematicManager();
                     Clipboard clipboard = schematics.load(file);
-                    schematics.clear(clipboard, w, d.pasteX, d.pasteY, d.pasteZ);
+                    schematics.clear(clipboard, w, d.pasteX, d.pasteY, d.pasteZ, d.rotation, d.kept);
                     return;
                 } catch (Throwable t) {
                     plugin.getLogger().warning("Retrait sélectif de la schématique impossible, retrait complet de la zone : " + t);
@@ -425,7 +426,13 @@ public class HotelManager {
         try {
             if (schematics == null) schematics = new SchematicManager();
             Clipboard clipboard = schematics.load(file);
-            int[] b = schematics.bounds(clipboard, px, py, pz);
+
+            // Orientation : l'avant de la schématique (hotel.schematic-facing) est tourné vers là où regarde le joueur
+            int rotation = 0;
+            if (cfg.config().getBoolean("hotel.rotate-with-player", true)) {
+                rotation = schematics.angleBetween(parseFace(cfg.config().getString("hotel.schematic-facing", "SOUTH")), player.getFacing());
+            }
+            int[] b = schematics.bounds(clipboard, px, py, pz, rotation);
 
             if (cfg.config().getBoolean("hotel.check-inside-island", true)) {
                 World w = loc.getWorld();
@@ -438,13 +445,16 @@ public class HotelManager {
                 }
             }
 
-            schematics.paste(clipboard, loc.getWorld(), px, py, pz, cfg.config().getBoolean("hotel.ignore-air", false));
+            java.util.Set<Long> kept = schematics.paste(clipboard, loc.getWorld(), px, py, pz, rotation,
+                    SchematicManager.KeepMode.parse(cfg.config().getString("hotel.paste-keep-existing", "CONTAINERS")));
 
             HotelData d = restored != null ? restored : new HotelData(island.getUniqueId());
             d.world = loc.getWorld().getName();
             d.pasteX = px;
             d.pasteY = py;
             d.pasteZ = pz;
+            d.rotation = rotation;
+            d.kept = kept;
             d.minX = b[0];
             d.minY = b[1];
             d.minZ = b[2];
@@ -484,6 +494,16 @@ public class HotelManager {
             t.printStackTrace();
             cfg.send(player, "shulker.paste-failed");
         }
+    }
+
+    private static BlockFace parseFace(String s) {
+        try {
+            BlockFace f = BlockFace.valueOf(s == null ? "SOUTH" : s.trim().toUpperCase(Locale.ROOT));
+            if (f == BlockFace.NORTH || f == BlockFace.EAST || f == BlockFace.SOUTH || f == BlockFace.WEST) return f;
+        } catch (IllegalArgumentException ignored) {
+            // valeur invalide : SOUTH
+        }
+        return BlockFace.SOUTH;
     }
 
     public boolean worldEditAvailable() {
