@@ -40,7 +40,14 @@ La version de l'API SuperiorSkyblock2 se règle avec la propriété `ssb.api.ver
 ## Fichiers de configuration
 - `config.yml` : général, shulker, hôtel, OneBlock, minion, facteurs (12 niveaux)
 - `levels.yml` : ressources et durée pour chacun des niveaux 2 à 12
-- `menus.yml` : menu entièrement libre (aucune valeur par défaut réinjectée) : ajoutez/supprimez/déplacez des items, `action` (STORAGE, TOGGLE_MINION, CLOSE, NONE), `commands`, `states`, `slots`...
+- `menus.yml` : menu entièrement libre (aucune valeur par défaut réinjectée) : ajoutez/supprimez/déplacez des items, `action` (STORAGE, TOGGLE_MINION, PICKUP, CLOSE, NONE), `commands`, `states`, `slots`...
 - `messages.yml` : tous les messages
 
 Couleurs partout : `&c`, `&#RRGGBB`, `<#RRGGBB>`, `#RRGGBB`. Items partout : `MATERIAL` ou `nexo:nom_item`.
+
+## Déplacer l'hôtel de ville
+- Bouton **Déplacer l'hôtel de ville** (`action: PICKUP`) dans `/hotel` : la structure disparaît et le joueur reçoit la shulker. Niveau, amélioration en cours et stockage sont conservés à la repose.
+- Les blocs de la structure ne peuvent pas être cassés (pioche, explosions, pistons...) hors du menu. Permission de contournement : `hotel.bypass`.
+- Un seul hôtel par île (posé ou en cours de déplacement).
+- Si le porteur quitte / est expulsé de l'île, ou si l'île est supprimée, l'hôtel récupéré est supprimé et la shulker devient invalide.
+- Le stockage du minion permet de retirer des items mais pas d'en déposer.
