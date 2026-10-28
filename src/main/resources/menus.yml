@@ -14,7 +14,7 @@
 #   slot: 4               un slot
 #   slots: [0, 1, 2]      plusieurs slots (identique, cumulable avec slot)
 #   material, amount, name, lore, glow
-#   action:               STORAGE | TOGGLE_MINION | CLOSE | NONE (NONE par défaut)
+#   action:               STORAGE | TOGGLE_MINION | PICKUP | CLOSE | NONE (NONE par défaut)
 #   click-sound: "UI_BUTTON_CLICK"
 #   commands:             liste exécutée au clic : "[player] cmd", "[console] cmd", "[message] texte", "[close]"
 #   states:               (TOGGLE_MINION) surcharge de l'item selon l'état du minion : active | inactive | full
@@ -116,11 +116,22 @@ main:
         - ""
         - "&eClic pour ouvrir"
 
-    close:
-      slot: 53
-      material: BARRIER
-      name: "&cFermer"
-      action: CLOSE
+    # Récupère l'hôtel de ville (shulker) pour le déplacer. Niveau, améliorations et stockage sont conservés.
+    # Attention : si le joueur quitte son île, l'hôtel récupéré est supprimé.
+    pickup:
+      slot: 50
+      material: PURPLE_SHULKER_BOX
+      name: "&d&lDéplacer l'hôtel de ville"
+      action: PICKUP
+      click-sound: "UI_BUTTON_CLICK"
+      lore:
+        - "&7Récupérez l'hôtel de ville sous forme"
+        - "&7de shulker pour le poser ailleurs."
+        - "&7Niveau et améliorations conservés."
+        - ""
+        - "&cSi vous quittez votre île, il sera supprimé."
+        - ""
+        - "&eClic pour récupérer"
 
     # Exemple d'item personnalisé (retirez le # pour l'activer) :
     # warp:

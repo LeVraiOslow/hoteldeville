@@ -20,3 +20,6 @@ permissions:
   hotel.admin:
     description: Commandes d'administration
     default: op
+  hotel.bypass:
+    description: Pouvoir casser les blocs de la structure de l'hôtel de ville
+    default: op

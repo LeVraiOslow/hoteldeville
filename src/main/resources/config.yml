@@ -36,6 +36,7 @@ hotel:
   check-inside-island: true     # Refuse si la structure sort des limites de l'île
   sound-build: "BLOCK_ANVIL_USE"        # Son joué à la construction ("" = aucun)
   sound-upgrade: "ENTITY_PLAYER_LEVELUP" # Son joué à la fin d'une amélioration
+  sound-pickup: "ENTITY_ITEM_PICKUP"     # Son joué quand l'hôtel est récupéré via le menu ("" = aucun)
 
 # ───────────────────────── ONEBLOCK ─────────────────────────
 # Le minion casse le bloc générateur du module SSBOneBlock de SuperiorSkyblock2.

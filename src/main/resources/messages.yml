@@ -38,9 +38,14 @@ shulker:
   worldedit-missing: "&cWorldEdit/FAWE est requis pour construire l'hôtel de ville."
   paste-failed: "&cErreur lors de la construction de l'hôtel de ville."
   built: "&aVotre &6hôtel de ville&a a été construit ! Utilisez &e/hotel&a."
+  invalid: "&cCette shulker n'est plus valide (hôtel supprimé ou appartenant à une autre île). Elle a été retirée."
   built-members: "&f{player}&a a construit l'&6hôtel de ville&a de votre île."
 
 hotel:
+  picked-up: "&aVous avez récupéré l'&6hôtel de ville&a. Reposez-le sur votre île : niveau et améliorations sont conservés. &c(Si vous quittez l'île, il sera supprimé.)"
+  picked-up-members: "&f{player}&a a récupéré l'&6hôtel de ville&a de l'île."
+  pickup-inventory-full: "&cVotre inventaire est plein : libérez une place pour récupérer l'hôtel de ville."
+  protected: "&cL'hôtel de ville ne peut être déplacé que via le menu &e/hotel&c."
   reset: "&cL'hôtel de ville de votre île a été réinitialisé."
   upgrading-wait: "&cUne amélioration est déjà en cours."
   max-level: "&cL'hôtel de ville est déjà au niveau maximum."
