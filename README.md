@@ -47,6 +47,7 @@ Couleurs partout : `&c`, `&#RRGGBB`, `<#RRGGBB>`, `#RRGGBB`. Items partout : `MA
 
 ## Déplacer l'hôtel de ville
 - Bouton **Déplacer l'hôtel de ville** (`action: PICKUP`) dans `/hotel` : la structure disparaît et le joueur reçoit la shulker. Niveau, amélioration en cours et stockage sont conservés à la repose.
+- À la récupération, seuls les blocs de la schématique sont retirés : coffres, fours, etc. posés par les joueurs dans le bâtiment restent en place avec leur contenu (`config.yml > hotel.pickup-keep-other-blocks`, `true` par défaut).
 - Les blocs de la structure ne peuvent pas être cassés (pioche, explosions, pistons...) hors du menu. Permission de contournement : `hotel.bypass`.
 - Un seul hôtel par île (posé ou en cours de déplacement).
 - Si le porteur quitte / est expulsé de l'île, ou si l'île est supprimée, l'hôtel récupéré est supprimé et la shulker devient invalide.
