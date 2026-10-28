@@ -1,7 +1,9 @@
 package fr.hoteldeville.manager;
 
+import com.bgsoftware.superiorskyblock.api.SuperiorSkyblock;
 import com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI;
 import com.bgsoftware.superiorskyblock.api.island.Island;
+import com.bgsoftware.superiorskyblock.api.wrappers.BlockOffset;
 import com.bgsoftware.superiorskyblock.api.wrappers.SuperiorPlayer;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import fr.hoteldeville.HotelDeVillePlugin;
@@ -23,26 +25,37 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.Statistic;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.ArmorStand;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.ExperienceOrb;
 import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
+import org.bukkit.event.RegisteredListener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/** Logique principale : placement, améliorations, stockage et minions. */
+/** Logique principale : placement, améliorations, stockage et minion (invisible). */
 public class HotelManager {
 
     private final HotelDeVillePlugin plugin;
@@ -50,17 +63,25 @@ public class HotelManager {
     private final DataManager data;
 
     public final NamespacedKey shulkerKey;
-    public final NamespacedKey minionKey;
 
     private SchematicManager schematics;
     private Statistic playStat;
+
+    // Liaison avec le module SSBOneBlock (par réflexion : aucune dépendance de compilation)
+    private boolean moduleChecked = false;
+    private Object phasesHandler;
+    private Method runNextAction;
+
+    // Capture des drops pendant un BlockBreakEvent simulé (mode EVENT)
+    private HotelData capturing;
+    private Location captureAt;
+    private boolean capturedSomething;
 
     public HotelManager(HotelDeVillePlugin plugin) {
         this.plugin = plugin;
         this.cfg = plugin.configs();
         this.data = plugin.data();
         this.shulkerKey = new NamespacedKey(plugin, "hotel_shulker");
-        this.minionKey = new NamespacedKey(plugin, "hotel_minion");
         for (String n : new String[]{"PLAY_ONE_MINUTE", "PLAY_TIME"}) {
             try {
                 playStat = Statistic.valueOf(n);
@@ -74,12 +95,12 @@ public class HotelManager {
     // ───────────────────────── Îles ─────────────────────────
 
     public Island islandOf(Player p) {
-        SuperiorPlayer sp = SuperiorSkyblockAPI.getPlayer(p.getUniqueId());
+        SuperiorPlayer sp = SuperiorSkyblockAPI.getPlayer(p);
         return sp == null ? null : sp.getIsland();
     }
 
     public Island islandById(UUID id) {
-        return SuperiorSkyblockAPI.getGrid().getIslandByUUID(id);
+        return SuperiorSkyblockAPI.getIslandByUUID(id);
     }
 
     public HotelData hotelOf(Island island) {
@@ -98,23 +119,90 @@ public class HotelManager {
         forEachOnlineMember(island, p -> cfg.send(p, path, kv));
     }
 
-    private Location oneBlockLocation(Island island) {
-        World.Environment env;
-        try {
-            env = World.Environment.valueOf(cfg.config().getString("oneblock.environment", "NORMAL").toUpperCase());
-        } catch (IllegalArgumentException e) {
-            env = World.Environment.NORMAL;
+    private Player firstOnlineMember(Island island) {
+        for (SuperiorPlayer m : island.getIslandMembers(true)) {
+            Player p = m.asPlayer();
+            if (p != null && p.isOnline()) return p;
         }
-        Location center;
+        return null;
+    }
+
+    // ───────────────────────── Bloc générateur OneBlock ─────────────────────────
+
+    /** Décalage du bloc : lu dans modules/OneBlock/config.yml (offset-source: MODULE) ou dans config.yml. */
+    private int[] oneBlockOffset() {
+        String source = cfg.config().getString("oneblock.offset-source", "MODULE");
+        if ("MODULE".equalsIgnoreCase(source)) {
+            Plugin ssb = Bukkit.getPluginManager().getPlugin("SuperiorSkyblock2");
+            if (ssb != null) {
+                File f = new File(ssb.getDataFolder(), "modules" + File.separator + "OneBlock" + File.separator + "config.yml");
+                if (f.exists()) {
+                    String raw = YamlConfiguration.loadConfiguration(f).getString("block-offset", null);
+                    if (raw != null) {
+                        String[] parts = raw.split(",");
+                        if (parts.length == 3) {
+                            try {
+                                // Le module convertit les décimales en entiers par troncature (-0.5 -> 0).
+                                return new int[]{
+                                        (int) Double.parseDouble(parts[0].trim()),
+                                        (int) Double.parseDouble(parts[1].trim()),
+                                        (int) Double.parseDouble(parts[2].trim())};
+                            } catch (NumberFormatException ignored) {
+                                // on retombe sur la config du plugin
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return new int[]{
+                cfg.config().getInt("oneblock.offset.x", 0),
+                cfg.config().getInt("oneblock.offset.y", -1),
+                cfg.config().getInt("oneblock.offset.z", 0)};
+    }
+
+    /** Emplacement exact du bloc générateur OneBlock de l'île (même formule que SSBOneBlock). */
+    public Location oneBlockLocation(Island island) {
         try {
-            center = island.getCenter(env);
-        } catch (Exception e) {
+            SuperiorSkyblock ssb = SuperiorSkyblockAPI.getSuperiorSkyblock();
+            Location center = island.getCenter(ssb.getSettings().getWorlds().getDefaultWorldDimension());
+            if (center == null || center.getWorld() == null) return null;
+            int[] o = oneBlockOffset();
+            BlockOffset offset = SuperiorSkyblockAPI.getFactory().createBlockOffset(o[0], o[1], o[2]);
+            Location l = offset.applyToLocation(center.clone().subtract(0.5, 0, 0.5));
+            return l.getBlock().getLocation();
+        } catch (Throwable t) {
+            plugin.getLogger().warning("Position du OneBlock introuvable : " + t);
             return null;
         }
-        if (center == null || center.getWorld() == null) return null;
-        ConfigurationSection o = cfg.config().getConfigurationSection("oneblock.offset");
-        int ox = o == null ? 0 : o.getInt("x"), oy = o == null ? 0 : o.getInt("y"), oz = o == null ? 0 : o.getInt("z");
-        return new Location(center.getWorld(), center.getBlockX() + ox, center.getBlockY() + oy, center.getBlockZ() + oz);
+    }
+
+    /** Récupère le gestionnaire de phases du module SSBOneBlock (via son listener enregistré). */
+    private boolean initModule() {
+        if (phasesHandler != null && runNextAction != null) return true;
+        if (moduleChecked) return false;
+        moduleChecked = true;
+        try {
+            for (RegisteredListener rl : BlockBreakEvent.getHandlerList().getRegisteredListeners()) {
+                Object listener = rl.getListener();
+                if (!listener.getClass().getName().equals("com.bgsoftware.ssboneblock.listeners.BlocksListener")) continue;
+                Field f = listener.getClass().getDeclaredField("module");
+                f.setAccessible(true);
+                Object module = f.get(listener);
+                phasesHandler = module.getClass().getMethod("getPhasesHandler").invoke(module);
+                for (Method m : phasesHandler.getClass().getMethods()) {
+                    if (m.getName().equals("runNextAction") && m.getParameterCount() == 2) {
+                        runNextAction = m;
+                        break;
+                    }
+                }
+                return phasesHandler != null && runNextAction != null;
+            }
+        } catch (Throwable t) {
+            plugin.getLogger().warning("Liaison avec SSBOneBlock impossible : " + t);
+        }
+        plugin.getLogger().warning("Module SSBOneBlock introuvable : le mode DIRECT du minion est indisponible.");
+        return false;
     }
 
     // ───────────────────────── Shulker ─────────────────────────
@@ -213,11 +301,8 @@ public class HotelManager {
             d.maxX = b[3];
             d.maxY = b[4];
             d.maxZ = b[5];
-            ConfigurationSection so = cfg.config().getConfigurationSection("minion.spawn-offset");
-            d.minionX = loc.getBlockX() + (so == null ? 0.5 : so.getDouble("x", 0.5));
-            d.minionY = loc.getBlockY() + (so == null ? 1.0 : so.getDouble("y", 1.0));
-            d.minionZ = loc.getBlockZ() + (so == null ? 0.5 : so.getDouble("z", 0.5));
             d.level = 1;
+            d.active = cfg.config().getBoolean("minion.active-on-build", false);
             data.put(d);
             data.save();
 
@@ -228,7 +313,6 @@ public class HotelManager {
                 player.getInventory().setItem(hand, inHand.getAmount() <= 0 ? null : inHand);
             }
 
-            ensureMinion(d);
             Effects.play(loc, cfg.config().getString("hotel.sound-build", ""), 1f);
             cfg.send(player, "shulker.built");
             forEachOnlineMember(island, m -> {
@@ -250,14 +334,14 @@ public class HotelManager {
 
     // ───────────────────────── Réinitialisation ─────────────────────────
 
-    /** Supprime l'hôtel (structure, minion, stockage, données) d'une île. */
+    /** Supprime l'hôtel (structure, stockage, données) d'une île. */
     public void resetHotel(UUID islandId) {
         HotelData d = data.get(islandId);
         if (d == null) return;
+        d.active = false;
         if (d.inventory != null) {
             for (HumanEntity v : new ArrayList<>(d.inventory.getViewers())) v.closeInventory();
         }
-        removeMinion(d);
         World w = d.world == null ? null : Bukkit.getWorld(d.world);
         if (w != null) {
             for (int x = d.minX; x <= d.maxX; x++) {
@@ -273,8 +357,9 @@ public class HotelManager {
         data.save();
     }
 
-    /** Supprime les hôtels dont l'île n'existe plus (à appeler après le chargement de SuperiorSkyblock2). */
+    /** Supprime les hôtels dont l'île n'existe plus. */
     public void cleanOrphans() {
+        if (SuperiorSkyblockAPI.getGrid().getIslands().isEmpty()) return; // îles pas encore chargées
         for (UUID id : new ArrayList<>(data.all().keySet())) {
             if (islandById(id) == null) {
                 plugin.getLogger().info("Île " + id + " introuvable : hôtel de ville réinitialisé.");
@@ -450,7 +535,7 @@ public class HotelManager {
         d.upgradeStart = 0;
         d.upgradeTarget = 0;
         d.validated.clear();
-        applyLevelChange(d);
+        storage(d);
         data.save();
         Island island = islandById(d.islandId);
         forEachOnlineMember(island, m -> {
@@ -459,21 +544,13 @@ public class HotelManager {
         });
     }
 
-    /** Réapplique les effets d'un niveau : stockage redimensionné, nom du minion. */
-    public void applyLevelChange(HotelData d) {
-        storage(d);
-        Entity e = d.minionUuid == null ? null : Bukkit.getEntity(d.minionUuid);
-        if (e instanceof ArmorStand a) updateMinionName(d, a);
-        data.markDirty();
-    }
-
     public void setLevel(HotelData d, int level) {
         d.level = Math.max(1, Math.min(level, cfg.maxLevel()));
         d.upgradeEnd = 0;
         d.upgradeStart = 0;
         d.upgradeTarget = 0;
         d.validated.clear();
-        applyLevelChange(d);
+        storage(d);
         data.save();
     }
 
@@ -514,116 +591,61 @@ public class HotelManager {
         return used;
     }
 
-    private boolean hasRoom(Inventory inv) {
+    /** Reste-t-il de la place (slot vide) ? Un stockage "plein" = plus aucun slot libre. */
+    public boolean hasRoom(Inventory inv) {
         for (ItemStack it : inv.getContents()) {
-            if (it == null || it.getType().isAir() || it.getAmount() < it.getMaxStackSize()) return true;
+            if (it == null || it.getType().isAir()) return true;
         }
         return false;
     }
 
-    // ───────────────────────── Minion : entité ─────────────────────────
+    // ───────────────────────── Minion : démarrer / arrêter ─────────────────────────
 
-    private ArmorStand findMinion(HotelData d, World w, int cx, int cz) {
-        ArmorStand found = null;
-        if (d.minionUuid != null) {
-            Entity e = Bukkit.getEntity(d.minionUuid);
-            if (e instanceof ArmorStand a && a.isValid()) found = a;
-        }
-        if (found == null) {
-            String id = d.islandId.toString();
-            for (Entity e : w.getChunkAt(cx, cz).getEntities()) {
-                if (e instanceof ArmorStand a
-                        && id.equals(a.getPersistentDataContainer().get(minionKey, PersistentDataType.STRING))) {
-                    if (found == null) found = a;
-                    else a.remove();
-                }
-            }
-        }
-        return found;
+    public boolean minionEnabled() {
+        return cfg.config().getBoolean("minion.enabled", true);
     }
 
-    public void ensureMinion(HotelData d) {
-        if (!cfg.config().getBoolean("minion.enabled", true) || d.world == null) return;
-        World w = Bukkit.getWorld(d.world);
-        if (w == null) return;
-        int cx = ((int) Math.floor(d.minionX)) >> 4;
-        int cz = ((int) Math.floor(d.minionZ)) >> 4;
-        if (!w.isChunkLoaded(cx, cz)) return;
+    /** "active", "inactive" ou "full" (arrêté car le stockage est plein). */
+    public String minionState(HotelData d) {
+        if (d.active) return "active";
+        return hasRoom(storage(d)) ? "inactive" : "full";
+    }
 
-        ArmorStand stand = findMinion(d, w, cx, cz);
-        if (stand == null) {
-            ConfigurationSection mc = cfg.config().getConfigurationSection("minion");
-            Location l = new Location(w, d.minionX, d.minionY, d.minionZ);
-            stand = w.spawn(l, ArmorStand.class, as -> {
-                as.setInvulnerable(true);
-                as.setGravity(false);
-                as.setPersistent(true);
-                as.setRemoveWhenFarAway(false);
-                as.setCanPickupItems(false);
-                as.setArms(mc == null || mc.getBoolean("arms", true));
-                as.setSmall(mc != null && mc.getBoolean("small", false));
-                as.setBasePlate(mc != null && mc.getBoolean("base-plate", false));
-                as.getPersistentDataContainer().set(minionKey, PersistentDataType.STRING, d.islandId.toString());
-                if (mc != null) {
-                    ConfigurationSection eq = mc.getConfigurationSection("equipment");
-                    if (eq != null) {
-                        setSlot(as, EquipmentSlot.HEAD, eq.getString("helmet", ""));
-                        setSlot(as, EquipmentSlot.CHEST, eq.getString("chestplate", ""));
-                        setSlot(as, EquipmentSlot.LEGS, eq.getString("leggings", ""));
-                        setSlot(as, EquipmentSlot.FEET, eq.getString("boots", ""));
-                        setSlot(as, EquipmentSlot.HAND, eq.getString("hand", ""));
-                    }
-                }
-            });
+    /** Bouton démarrer / arrêter du menu. */
+    public void toggleMinion(Player player, HotelData d) {
+        if (!minionEnabled()) {
+            cfg.send(player, "minion.disabled");
+            return;
         }
-        d.minionUuid = stand.getUniqueId();
-        updateMinionName(d, stand);
-    }
-
-    private void setSlot(ArmorStand as, EquipmentSlot slot, String spec) {
-        ItemStack item = Items.parse(spec, 1);
-        if (item != null) as.getEquipment().setItem(slot, item);
-    }
-
-    private void updateMinionName(HotelData d, ArmorStand stand) {
-        boolean show = cfg.config().getBoolean("minion.show-name", true);
-        String name = cfg.config().getString("minion.name", "&6Minion");
-        stand.customName(Text.color(Text.rep(name, "level", String.valueOf(d.level))));
-        stand.setCustomNameVisible(show);
-    }
-
-    public void removeMinion(HotelData d) {
-        if (d.world == null) return;
-        World w = Bukkit.getWorld(d.world);
-        if (w == null) return;
-        int cx = ((int) Math.floor(d.minionX)) >> 4;
-        int cz = ((int) Math.floor(d.minionZ)) >> 4;
-        if (!w.isChunkLoaded(cx, cz)) w.getChunkAt(cx, cz);
-        String id = d.islandId.toString();
-        for (Entity e : w.getChunkAt(cx, cz).getEntities()) {
-            if (e instanceof ArmorStand a
-                    && id.equals(a.getPersistentDataContainer().get(minionKey, PersistentDataType.STRING))) {
-                a.remove();
-            }
+        if (d.active) {
+            d.active = false;
+            data.markDirty();
+            cfg.send(player, "minion.stopped");
+            return;
         }
-        if (d.minionUuid != null) {
-            Entity e = Bukkit.getEntity(d.minionUuid);
-            if (e != null) e.remove();
+        if (!hasRoom(storage(d))) {
+            cfg.send(player, "minion.cannot-start-full");
+            return;
         }
-        d.minionUuid = null;
+        d.active = true;
+        d.nextBreak = 0;
+        data.markDirty();
+        cfg.send(player, "minion.started");
     }
 
-    public void ensureAllMinions() {
-        for (HotelData d : data.all().values()) ensureMinion(d);
+    private void stopBecauseFull(HotelData d, Island island) {
+        d.active = false;
+        data.markDirty();
+        broadcast(island, "minion.stopped-full");
     }
 
     // ───────────────────────── Minion : minage ─────────────────────────
 
     public void tickMinions() {
-        if (!cfg.config().getBoolean("minion.enabled", true)) return;
+        if (!minionEnabled()) return;
         long now = System.currentTimeMillis();
         for (HotelData d : data.all().values()) {
-            if (now < d.nextBreak) continue;
+            if (!d.active || now < d.nextBreak) continue;
             try {
                 mine(d, now);
             } catch (Throwable t) {
@@ -641,48 +663,27 @@ public class HotelManager {
         World w = loc.getWorld();
         if (!w.isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) return;
 
-        Block block = loc.getBlock();
-        List<String> ignored = cfg.config().getStringList("minion.ignored-blocks");
-        if (ignored.contains(block.getType().name())) return;
-
         Player actor = firstOnlineMember(island);
         if (actor == null && cfg.config().getBoolean("minion.only-when-members-online", false)) return;
 
-        Inventory inv = storage(d);
-        boolean pause = "PAUSE".equalsIgnoreCase(cfg.config().getString("minion.on-storage-full", "PAUSE"));
-        if (pause && !hasRoom(inv)) {
-            if (!d.fullWarned) {
-                d.fullWarned = true;
-                broadcast(island, "minion.storage-full");
-            }
+        Block block = loc.getBlock();
+        if (cfg.config().getStringList("minion.ignored-blocks").contains(block.getType().name())) {
+            d.nextBreak = now + 1000;
             return;
         }
-        d.fullWarned = false;
+
+        Inventory inv = storage(d);
+        if (!hasRoom(inv)) {
+            stopBecauseFull(d, island);
+            return;
+        }
 
         double seconds = Math.max(0.25, cfg.factor("speed", d.level));
         d.nextBreak = now + (long) (seconds * 1000);
 
-        ItemStack tool = Items.parse(cfg.config().getString("minion.tool", "NETHERITE_PICKAXE"), 1);
-        Material before = block.getType();
-        boolean dropItems = true;
-
-        if (cfg.config().getBoolean("minion.fire-break-event", true) && actor != null) {
-            BlockBreakEvent ev = new BlockBreakEvent(block, actor);
-            Bukkit.getPluginManager().callEvent(ev);
-            if (ev.isCancelled()) return;
-            dropItems = ev.isDropItems();
-        }
-
-        Collection<ItemStack> drops = List.of();
-        if (dropItems) {
-            drops = tool == null ? block.getDrops() : (actor != null ? block.getDrops(tool, actor) : block.getDrops(tool));
-        }
-        if (block.getType() == before) block.setType(Material.AIR);
-
-        for (ItemStack drop : drops) {
-            if (drop == null || drop.getType().isAir()) continue;
-            inv.addItem(drop); // surplus perdu si plein (mode VOID, ou PAUSE sans place restante)
-        }
+        boolean eventMode = "EVENT".equalsIgnoreCase(cfg.config().getString("minion.break-mode", "DIRECT"));
+        boolean broke = (eventMode && actor != null) ? breakViaEvent(d, block, actor) : breakDirect(d, island, block, inv);
+        if (!broke) return;
 
         Location center = block.getLocation().add(0.5, 0.5, 0.5);
         Effects.play(center, cfg.config().getString("minion.effects.sound", ""),
@@ -692,14 +693,84 @@ public class HotelManager {
 
         rewards(d, island);
         data.markDirty();
+
+        if (!hasRoom(inv)) stopBecauseFull(d, island);
     }
 
-    private Player firstOnlineMember(Island island) {
-        for (SuperiorPlayer m : island.getIslandMembers(true)) {
-            Player p = m.asPlayer();
-            if (p != null && p.isOnline()) return p;
+    /**
+     * Mode EVENT : simule la casse par un membre connecté. SSBOneBlock gère tout (drops, phases)
+     * et les autres plugins voient un vrai BlockBreakEvent. Les drops sont capturés vers le stockage.
+     * Les drops dépendent alors de l'outil tenu par le membre.
+     */
+    private boolean breakViaEvent(HotelData d, Block block, Player actor) {
+        Material before = block.getType();
+        capturing = d;
+        captureAt = block.getLocation();
+        capturedSomething = false;
+        try {
+            Bukkit.getPluginManager().callEvent(new BlockBreakEvent(block, actor));
+        } finally {
+            capturing = null;
+            captureAt = null;
         }
-        return null;
+        return capturedSomething || block.getType() != before;
+    }
+
+    /** Appelé par le listener d'entités pendant breakViaEvent. */
+    public void captureSpawn(Entity entity, Cancellable event) {
+        HotelData d = capturing;
+        if (d == null || captureAt == null) return;
+        Location l = entity.getLocation();
+        if (l.getWorld() != captureAt.getWorld() || l.distanceSquared(captureAt.clone().add(0.5, 1, 0.5)) > 9) return;
+
+        if (entity instanceof ExperienceOrb) {
+            event.setCancelled(true); // l'xp du minion est donnée par le facteur "xp"
+            capturedSomething = true;
+        } else if (entity instanceof Item item) {
+            ItemStack stack = item.getItemStack();
+            var left = storage(d).addItem(stack);
+            capturedSomething = true;
+            if (left.isEmpty()) {
+                event.setCancelled(true);
+            } else {
+                item.setItemStack(left.values().iterator().next());
+            }
+        }
+    }
+
+    /**
+     * Mode DIRECT (par défaut) : le minion casse le bloc avec son propre outil (config minion.tool),
+     * range les drops et demande à SSBOneBlock de générer le bloc suivant. Fonctionne même sans joueur connecté.
+     */
+    private boolean breakDirect(HotelData d, Island island, Block block, Inventory inv) {
+        if (!initModule()) return false;
+
+        ItemStack tool = Items.parse(cfg.config().getString("minion.tool", "NETHERITE_PICKAXE"), 1);
+        List<ItemStack> drops = new ArrayList<>(tool == null ? block.getDrops() : block.getDrops(tool));
+
+        BlockState state = block.getState();
+        if (state instanceof InventoryHolder holder && !(state instanceof ShulkerBox)) {
+            for (ItemStack it : holder.getInventory().getContents()) {
+                if (it != null && !it.getType().isAir()) drops.add(it);
+            }
+            holder.getInventory().clear();
+        }
+
+        block.setType(Material.AIR);
+        try {
+            runNextAction.invoke(phasesHandler, island, null);
+        } catch (Throwable t) {
+            plugin.getLogger().warning("SSBOneBlock n'a pas pu générer le bloc suivant : " + t);
+        }
+
+        Location above = block.getLocation().add(0.5, 1, 0.5);
+        for (ItemStack drop : drops) {
+            if (drop == null || drop.getType().isAir()) continue;
+            for (ItemStack rest : inv.addItem(drop).values()) {
+                block.getWorld().dropItemNaturally(above, rest); // plein : rien n'est perdu
+            }
+        }
+        return true;
     }
 
     private void rewards(HotelData d, Island island) {

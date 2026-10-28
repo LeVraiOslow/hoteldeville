@@ -35,10 +35,12 @@ public class Configs {
     }
 
     public void load() {
-        config = loadFile("config.yml");
-        levelsFile = loadFile("levels.yml");
-        menus = loadFile("menus.yml");
-        messages = loadFile("messages.yml");
+        // config.yml et messages.yml : les clés absentes reprennent la valeur par défaut du plugin.
+        // levels.yml et menus.yml : AUCUNE valeur par défaut, tout ce que vous supprimez reste supprimé.
+        config = loadFile("config.yml", true);
+        levelsFile = loadFile("levels.yml", false);
+        menus = loadFile("menus.yml", false);
+        messages = loadFile("messages.yml", true);
 
         maxLevel = Math.max(1, config.getInt("settings.max-level", 12));
         Text.setUnits(
@@ -50,14 +52,16 @@ public class Configs {
         loadLevels();
     }
 
-    private FileConfiguration loadFile(String name) {
+    private FileConfiguration loadFile(String name, boolean withDefaults) {
         File file = new File(plugin.getDataFolder(), name);
         if (!file.exists()) plugin.saveResource(name, false);
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
-        try (InputStreamReader reader = new InputStreamReader(plugin.getResource(name), StandardCharsets.UTF_8)) {
-            yaml.setDefaults(YamlConfiguration.loadConfiguration(reader));
-        } catch (Exception ignored) {
-            // pas de valeurs par défaut disponibles
+        if (withDefaults) {
+            try (InputStreamReader reader = new InputStreamReader(plugin.getResource(name), StandardCharsets.UTF_8)) {
+                yaml.setDefaults(YamlConfiguration.loadConfiguration(reader));
+            } catch (Exception ignored) {
+                // pas de valeurs par défaut disponibles
+            }
         }
         return yaml;
     }
