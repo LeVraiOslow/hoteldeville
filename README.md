@@ -49,7 +49,6 @@ Couleurs partout : `&c`, `&#RRGGBB`, `<#RRGGBB>`, `#RRGGBB`. Items partout : `MA
 - Bouton **Déplacer l'hôtel de ville** (`action: PICKUP`) dans `/hotel` : la structure disparaît et le joueur reçoit la shulker. Niveau, amélioration en cours et stockage sont conservés à la repose.
 - À la récupération, seuls les blocs de la schématique sont retirés : coffres, fours, etc. posés par les joueurs dans le bâtiment restent en place avec leur contenu (`config.yml > hotel.pickup-keep-other-blocks`, `true` par défaut).
 - À la pose, l'air de la schématique n'efface rien et la schématique s'adapte à ce qui est déjà présent (`hotel.paste-keep-existing` : `NONE`, `CONTAINERS` par défaut, `ALL`).
-- La schématique est tournée dans le sens où regarde le joueur (`hotel.rotate-with-player`). Réglez `hotel.schematic-facing` sur la direction vers laquelle regarde l'avant de votre schématique (la direction dans laquelle vous regardiez au moment du `//copy`).
 - Les blocs de la structure ne peuvent pas être cassés (pioche, explosions, pistons...) hors du menu. Permission de contournement : `hotel.bypass`.
 - Un seul hôtel par île (posé ou en cours de déplacement).
 - Si le porteur quitte / est expulsé de l'île, ou si l'île est supprimée, l'hôtel récupéré est supprimé et la shulker devient invalide.
