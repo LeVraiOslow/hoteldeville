@@ -63,6 +63,8 @@ public class HotelManager {
     private final DataManager data;
 
     public final NamespacedKey shulkerKey;
+    /** Présente sur une shulker récupérée : contient l'UUID de l'île à laquelle appartient l'hôtel. */
+    public final NamespacedKey carriedKey;
 
     private SchematicManager schematics;
     private Statistic playStat;
@@ -82,6 +84,7 @@ public class HotelManager {
         this.cfg = plugin.configs();
         this.data = plugin.data();
         this.shulkerKey = new NamespacedKey(plugin, "hotel_shulker");
+        this.carriedKey = new NamespacedKey(plugin, "hotel_carried_island");
         for (String n : new String[]{"PLAY_ONE_MINUTE", "PLAY_TIME"}) {
             try {
                 playStat = Statistic.valueOf(n);
@@ -233,6 +236,117 @@ public class HotelManager {
         for (ItemStack extra : leftover.values()) p.getWorld().dropItemNaturally(p.getLocation(), extra);
     }
 
+    /** UUID de l'île inscrite sur une shulker récupérée (null si c'est une shulker neuve). */
+    public UUID carriedIsland(ItemStack item) {
+        if (!isHotelShulker(item)) return null;
+        String raw = item.getItemMeta().getPersistentDataContainer().get(carriedKey, PersistentDataType.STRING);
+        if (raw == null) return null;
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    public boolean isCarriedShulker(ItemStack item) {
+        return isHotelShulker(item)
+                && item.getItemMeta().getPersistentDataContainer().has(carriedKey, PersistentDataType.STRING);
+    }
+
+    // ───────────────────────── Protection de la structure ─────────────────────────
+
+    /** L'emplacement fait-il partie de la structure d'un hôtel posé ? */
+    public boolean isHotelBlock(Location l) {
+        if (l == null || l.getWorld() == null) return false;
+        String world = l.getWorld().getName();
+        int x = l.getBlockX(), y = l.getBlockY(), z = l.getBlockZ();
+        for (HotelData d : data.all().values()) {
+            if (!world.equals(d.world)) continue;
+            if (x >= d.minX && x <= d.maxX && y >= d.minY && y <= d.maxY && z >= d.minZ && z <= d.maxZ) return true;
+        }
+        return false;
+    }
+
+    // ───────────────────────── Récupération (menu) ─────────────────────────
+
+    /** Retire la structure et donne la shulker au joueur. Niveau, améliorations et stockage sont conservés. */
+    public void pickupHotel(Player player, HotelData d) {
+        if (player.getInventory().firstEmpty() == -1) {
+            cfg.send(player, "hotel.pickup-inventory-full");
+            return;
+        }
+        d.syncStorage();
+        if (d.inventory != null) {
+            for (HumanEntity v : new ArrayList<>(d.inventory.getViewers())) {
+                if (!v.getUniqueId().equals(player.getUniqueId())) v.closeInventory();
+            }
+        }
+        d.inventory = null; // sera reconstruit depuis d.storage à la repose
+        d.active = false;
+        d.carrier = player.getUniqueId();
+
+        clearStructure(d);
+        data.remove(d.islandId);
+        data.putCarried(d);
+        data.save();
+
+        ItemStack shulker = createShulker();
+        ItemMeta meta = shulker.getItemMeta();
+        meta.getPersistentDataContainer().set(carriedKey, PersistentDataType.STRING, d.islandId.toString());
+        shulker.setItemMeta(meta);
+        player.getInventory().addItem(shulker);
+
+        player.closeInventory();
+        Effects.play(player, cfg.config().getString("hotel.sound-pickup", ""));
+        cfg.send(player, "hotel.picked-up");
+        Island island = islandById(d.islandId);
+        forEachOnlineMember(island, m -> {
+            if (!m.getUniqueId().equals(player.getUniqueId())) {
+                cfg.send(m, "hotel.picked-up-members", "player", player.getName());
+            }
+        });
+    }
+
+    private void clearStructure(HotelData d) {
+        World w = d.world == null ? null : Bukkit.getWorld(d.world);
+        if (w == null) return;
+        for (int x = d.minX; x <= d.maxX; x++) {
+            for (int y = d.minY; y <= d.maxY; y++) {
+                for (int z = d.minZ; z <= d.maxZ; z++) {
+                    Block b = w.getBlockAt(x, y, z);
+                    if (!b.getType().isAir()) b.setType(Material.AIR, false);
+                }
+            }
+        }
+    }
+
+    /** Supprime un hôtel récupéré (carrier parti, île supprimée...). Les shulkers restantes deviennent invalides. */
+    public void discardCarried(UUID islandId) {
+        if (data.removeCarried(islandId) != null) data.save();
+    }
+
+    /** Un membre quitte / est expulsé de l'île : s'il portait l'hôtel, celui-ci est supprimé. */
+    public void onMemberLeft(UUID islandId, UUID playerId) {
+        HotelData c = data.getCarried(islandId);
+        if (c == null || c.carrier == null || !c.carrier.equals(playerId)) return;
+        discardCarried(islandId);
+        Player p = Bukkit.getPlayer(playerId);
+        if (p != null) removeCarriedShulkers(p, islandId);
+    }
+
+    /** Retire de l'inventaire d'un joueur toute shulker récupérée liée à cette île. */
+    public void removeCarriedShulkers(Player p, UUID islandId) {
+        ItemStack[] contents = p.getInventory().getContents();
+        boolean changed = false;
+        for (int i = 0; i < contents.length; i++) {
+            if (islandId.equals(carriedIsland(contents[i]))) {
+                contents[i] = null;
+                changed = true;
+            }
+        }
+        if (changed) p.getInventory().setContents(contents);
+    }
+
     // ───────────────────────── Placement ─────────────────────────
 
     /** Appelé quand un joueur pose la shulker. Gère tout (messages inclus). */
@@ -252,7 +366,23 @@ public class HotelManager {
             cfg.send(player, "shulker.not-your-island");
             return;
         }
-        if (data.get(island.getUniqueId()) != null) {
+        ItemStack heldItem = player.getInventory().getItem(hand);
+        boolean isCarried = isCarriedShulker(heldItem);
+        HotelData restored = null;
+        if (isCarried) {
+            UUID owner = carriedIsland(heldItem);
+            restored = owner == null ? null : data.getCarried(owner);
+            if (restored == null || !owner.equals(island.getUniqueId())) {
+                // Hôtel supprimé (île quittée / supprimée) ou shulker d'une autre île : item invalide
+                heldItem.setAmount(heldItem.getAmount() - 1);
+                player.getInventory().setItem(hand, heldItem.getAmount() <= 0 ? null : heldItem);
+                cfg.send(player, "shulker.invalid");
+                return;
+            }
+        }
+        // Un seul hôtel par île : déjà posé, ou déjà récupéré par un joueur
+        if (data.get(island.getUniqueId()) != null
+                || (!isCarried && data.getCarried(island.getUniqueId()) != null)) {
             cfg.send(player, "shulker.already-built");
             return;
         }
@@ -290,7 +420,7 @@ public class HotelManager {
 
             schematics.paste(clipboard, loc.getWorld(), px, py, pz, cfg.config().getBoolean("hotel.ignore-air", false));
 
-            HotelData d = new HotelData(island.getUniqueId());
+            HotelData d = restored != null ? restored : new HotelData(island.getUniqueId());
             d.world = loc.getWorld().getName();
             d.pasteX = px;
             d.pasteY = py;
@@ -301,8 +431,17 @@ public class HotelManager {
             d.maxX = b[3];
             d.maxY = b[4];
             d.maxZ = b[5];
-            d.level = 1;
-            d.active = cfg.config().getBoolean("minion.active-on-build", false);
+            if (restored != null) {
+                // Hôtel récupéré : niveau, améliorations et stockage conservés
+                data.removeCarried(d.islandId);
+                d.carrier = null;
+                d.inventory = null;
+                d.active = false;
+                d.nextBreak = 0;
+            } else {
+                d.level = 1;
+                d.active = cfg.config().getBoolean("minion.active-on-build", false);
+            }
             data.put(d);
             data.save();
 
@@ -336,6 +475,7 @@ public class HotelManager {
 
     /** Supprime l'hôtel (structure, stockage, données) d'une île. */
     public void resetHotel(UUID islandId) {
+        if (data.removeCarried(islandId) != null) data.save();
         HotelData d = data.get(islandId);
         if (d == null) return;
         d.active = false;
@@ -360,7 +500,9 @@ public class HotelManager {
     /** Supprime les hôtels dont l'île n'existe plus. */
     public void cleanOrphans() {
         if (SuperiorSkyblockAPI.getGrid().getIslands().isEmpty()) return; // îles pas encore chargées
-        for (UUID id : new ArrayList<>(data.all().keySet())) {
+        List<UUID> ids = new ArrayList<>(data.all().keySet());
+        ids.addAll(data.carried().keySet());
+        for (UUID id : ids) {
             if (islandById(id) == null) {
                 plugin.getLogger().info("Île " + id + " introuvable : hôtel de ville réinitialisé.");
                 resetHotel(id);
