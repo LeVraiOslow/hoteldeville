@@ -1,6 +1,8 @@
 package fr.hoteldeville.listener;
 
 import com.bgsoftware.superiorskyblock.api.events.IslandDisbandEvent;
+import com.bgsoftware.superiorskyblock.api.events.IslandKickEvent;
+import com.bgsoftware.superiorskyblock.api.events.IslandQuitEvent;
 import com.bgsoftware.superiorskyblock.api.events.PostIslandCreateEvent;
 import com.bgsoftware.superiorskyblock.api.island.Island;
 import com.bgsoftware.superiorskyblock.api.wrappers.SuperiorPlayer;
@@ -38,6 +40,7 @@ public class SkyblockListener implements Listener {
             Island island = plugin.hotels().islandOf(p);
             if (island == null) return;
             if (plugin.hotels().hotelOf(island) != null) return;
+            if (plugin.data().getCarried(island.getUniqueId()) != null) return;
             for (ItemStack it : p.getInventory().getContents()) {
                 if (plugin.hotels().isHotelShulker(it)) return; // déjà en possession
             }
@@ -52,8 +55,23 @@ public class SkyblockListener implements Listener {
         if (island == null) return;
         UUID id = island.getUniqueId();
         HotelData d = plugin.data().get(id);
-        if (d == null) return;
-        plugin.hotels().broadcast(island, "hotel.reset");
-        plugin.hotels().resetHotel(id);
+        boolean carried = plugin.data().getCarried(id) != null;
+        if (d == null && !carried) return;
+        if (d != null) plugin.hotels().broadcast(island, "hotel.reset");
+        plugin.hotels().resetHotel(id); // supprime aussi l'hôtel récupéré (shulker devenue invalide)
+    }
+
+    /** Le joueur qui a récupéré l'hôtel quitte son île : l'hôtel est supprimé. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onQuit(IslandQuitEvent event) {
+        if (event.getIsland() == null || event.getPlayer() == null) return;
+        plugin.hotels().onMemberLeft(event.getIsland().getUniqueId(), event.getPlayer().getUniqueId());
+    }
+
+    /** Idem si le porteur est expulsé de l'île. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onKick(IslandKickEvent event) {
+        if (event.getIsland() == null || event.getTarget() == null) return;
+        plugin.hotels().onMemberLeft(event.getIsland().getUniqueId(), event.getTarget().getUniqueId());
     }
 }
