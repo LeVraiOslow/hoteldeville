@@ -99,7 +99,6 @@ public class DataManager {
             d.maxX = s.getInt("max.x");
             d.maxY = s.getInt("max.y");
             d.maxZ = s.getInt("max.z");
-            d.rotation = s.getInt("rotation", 0);
             d.kept.addAll(s.getLongList("kept"));
             d.level = Math.max(1, s.getInt("level", 1));
             d.active = s.getBoolean("active", false);
@@ -153,7 +152,6 @@ public class DataManager {
         yaml.set(p + "max.x", d.maxX);
         yaml.set(p + "max.y", d.maxY);
         yaml.set(p + "max.z", d.maxZ);
-        yaml.set(p + "rotation", d.rotation);
         yaml.set(p + "kept", d.kept.isEmpty() ? null : new ArrayList<>(d.kept));
         yaml.set(p + "level", d.level);
         yaml.set(p + "active", d.active);

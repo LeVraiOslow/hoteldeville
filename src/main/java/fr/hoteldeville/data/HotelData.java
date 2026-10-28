@@ -19,9 +19,6 @@ public final class HotelData {
     public int pasteX, pasteY, pasteZ;
     public int minX, minY, minZ, maxX, maxY, maxZ;
 
-    /** Rotation (0/90/180/270) appliquée à la schématique lors de la pose. */
-    public int rotation = 0;
-
     /** Positions (packées, voir {@link #pack}) où un bloc existant a été conservé à la pose : jamais retirées. */
     public Set<Long> kept = new HashSet<>();
 
