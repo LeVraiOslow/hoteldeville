@@ -31,6 +31,9 @@ public final class HotelData {
     /** Identifiants des ressources déjà validées pour le prochain niveau. */
     public final Set<String> validated = new LinkedHashSet<>();
 
+    /** Joueur qui a récupéré l'hôtel (uniquement quand il est dans la main / l'inventaire d'un joueur). */
+    public UUID carrier;
+
     /** Contenu sauvegardé du stockage (peut contenir des null). */
     public List<ItemStack> storage = new ArrayList<>();
 

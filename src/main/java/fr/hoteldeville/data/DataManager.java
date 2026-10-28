@@ -19,6 +19,8 @@ public class DataManager {
     private final HotelDeVillePlugin plugin;
     private final File file;
     private final Map<UUID, HotelData> hotels = new HashMap<>();
+    /** Hôtels récupérés par un joueur (sous forme de shulker) et pas encore reposés. */
+    private final Map<UUID, HotelData> carried = new HashMap<>();
     private boolean dirty = false;
 
     public DataManager(HotelDeVillePlugin plugin) {
@@ -32,6 +34,24 @@ public class DataManager {
 
     public HotelData get(UUID island) {
         return hotels.get(island);
+    }
+
+    public Map<UUID, HotelData> carried() {
+        return carried;
+    }
+
+    public HotelData getCarried(UUID island) {
+        return carried.get(island);
+    }
+
+    public void putCarried(HotelData data) {
+        carried.put(data.islandId, data);
+        dirty = true;
+    }
+
+    public HotelData removeCarried(UUID island) {
+        dirty = true;
+        return carried.remove(island);
     }
 
     public void put(HotelData data) {
@@ -50,9 +70,14 @@ public class DataManager {
 
     public void load() {
         hotels.clear();
+        carried.clear();
         if (!file.exists()) return;
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
-        ConfigurationSection root = yaml.getConfigurationSection("hotels");
+        readAll(yaml.getConfigurationSection("hotels"), hotels);
+        readAll(yaml.getConfigurationSection("carried"), carried);
+    }
+
+    private void readAll(ConfigurationSection root, Map<UUID, HotelData> into) {
         if (root == null) return;
         for (String key : root.getKeys(false)) {
             UUID id;
@@ -80,11 +105,19 @@ public class DataManager {
             d.upgradeStart = s.getLong("upgrade.start", 0);
             d.upgradeTarget = s.getInt("upgrade.target", 0);
             d.validated.addAll(s.getStringList("validated"));
+            String carrier = s.getString("carrier", null);
+            if (carrier != null) {
+                try {
+                    d.carrier = UUID.fromString(carrier);
+                } catch (IllegalArgumentException ignored) {
+                    // ignoré
+                }
+            }
             List<?> raw = s.getList("storage");
             if (raw != null) {
                 for (Object o : raw) d.storage.add(o instanceof ItemStack is ? is : null);
             }
-            hotels.put(id, d);
+            into.put(id, d);
         }
     }
 
@@ -94,27 +127,8 @@ public class DataManager {
 
     public void save() {
         YamlConfiguration yaml = new YamlConfiguration();
-        for (HotelData d : hotels.values()) {
-            d.syncStorage();
-            String p = "hotels." + d.islandId + ".";
-            yaml.set(p + "world", d.world);
-            yaml.set(p + "paste.x", d.pasteX);
-            yaml.set(p + "paste.y", d.pasteY);
-            yaml.set(p + "paste.z", d.pasteZ);
-            yaml.set(p + "min.x", d.minX);
-            yaml.set(p + "min.y", d.minY);
-            yaml.set(p + "min.z", d.minZ);
-            yaml.set(p + "max.x", d.maxX);
-            yaml.set(p + "max.y", d.maxY);
-            yaml.set(p + "max.z", d.maxZ);
-            yaml.set(p + "level", d.level);
-            yaml.set(p + "active", d.active);
-            yaml.set(p + "upgrade.end", d.upgradeEnd);
-            yaml.set(p + "upgrade.start", d.upgradeStart);
-            yaml.set(p + "upgrade.target", d.upgradeTarget);
-            yaml.set(p + "validated", new ArrayList<>(d.validated));
-            yaml.set(p + "storage", d.storage);
-        }
+        for (HotelData d : hotels.values()) write(yaml, "hotels.", d);
+        for (HotelData d : carried.values()) write(yaml, "carried.", d);
         try {
             plugin.getDataFolder().mkdirs();
             yaml.save(file);
@@ -122,5 +136,28 @@ public class DataManager {
         } catch (IOException e) {
             plugin.getLogger().severe("Impossible de sauvegarder data.yml : " + e.getMessage());
         }
+    }
+
+    private void write(YamlConfiguration yaml, String root, HotelData d) {
+        d.syncStorage();
+        String p = root + d.islandId + ".";
+        yaml.set(p + "world", d.world);
+        yaml.set(p + "paste.x", d.pasteX);
+        yaml.set(p + "paste.y", d.pasteY);
+        yaml.set(p + "paste.z", d.pasteZ);
+        yaml.set(p + "min.x", d.minX);
+        yaml.set(p + "min.y", d.minY);
+        yaml.set(p + "min.z", d.minZ);
+        yaml.set(p + "max.x", d.maxX);
+        yaml.set(p + "max.y", d.maxY);
+        yaml.set(p + "max.z", d.maxZ);
+        yaml.set(p + "level", d.level);
+        yaml.set(p + "active", d.active);
+        yaml.set(p + "upgrade.end", d.upgradeEnd);
+        yaml.set(p + "upgrade.start", d.upgradeStart);
+        yaml.set(p + "upgrade.target", d.upgradeTarget);
+        yaml.set(p + "validated", new ArrayList<>(d.validated));
+        yaml.set(p + "carrier", d.carrier == null ? null : d.carrier.toString());
+        yaml.set(p + "storage", d.storage);
     }
 }
