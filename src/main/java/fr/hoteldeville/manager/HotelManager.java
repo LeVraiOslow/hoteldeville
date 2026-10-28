@@ -310,6 +310,26 @@ public class HotelManager {
     private void clearStructure(HotelData d) {
         World w = d.world == null ? null : Bukkit.getWorld(d.world);
         if (w == null) return;
+
+        // Retire uniquement les blocs de la schématique : coffres, fours, etc. posés par les joueurs restent en place
+        if (cfg.config().getBoolean("hotel.pickup-keep-other-blocks", true) && worldEditAvailable()) {
+            String fileName = cfg.config().getString("hotel.schematic", "hotel.schem");
+            File file = new File(plugin.getDataFolder(), "schematics" + File.separator + fileName);
+            if (file.exists()) {
+                try {
+                    if (schematics == null) schematics = new SchematicManager();
+                    Clipboard clipboard = schematics.load(file);
+                    schematics.clear(clipboard, w, d.pasteX, d.pasteY, d.pasteZ);
+                    return;
+                } catch (Throwable t) {
+                    plugin.getLogger().warning("Retrait sélectif de la schématique impossible, retrait complet de la zone : " + t);
+                }
+            } else {
+                plugin.getLogger().warning("Schématique introuvable (" + fileName + ") : retrait complet de la zone.");
+            }
+        }
+
+        // Repli : vide toute la zone de la structure
         for (int x = d.minX; x <= d.maxX; x++) {
             for (int y = d.minY; y <= d.maxY; y++) {
                 for (int z = d.minZ; z <= d.maxZ; z++) {
