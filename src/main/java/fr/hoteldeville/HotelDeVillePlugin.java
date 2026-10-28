@@ -4,7 +4,7 @@ import fr.hoteldeville.command.HotelCommand;
 import fr.hoteldeville.data.DataManager;
 import fr.hoteldeville.data.HotelData;
 import fr.hoteldeville.listener.MenuListener;
-import fr.hoteldeville.listener.MinionListener;
+import fr.hoteldeville.listener.CaptureListener;
 import fr.hoteldeville.listener.ShulkerListener;
 import fr.hoteldeville.listener.SkyblockListener;
 import fr.hoteldeville.manager.Configs;
@@ -55,7 +55,7 @@ public final class HotelDeVillePlugin extends JavaPlugin {
 
         Bukkit.getPluginManager().registerEvents(new SkyblockListener(this), this);
         Bukkit.getPluginManager().registerEvents(new ShulkerListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new MinionListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new CaptureListener(this), this);
         Bukkit.getPluginManager().registerEvents(new MenuListener(this), this);
 
         HotelCommand command = new HotelCommand(this);
@@ -65,8 +65,10 @@ public final class HotelDeVillePlugin extends JavaPlugin {
             cmd.setTabCompleter(command);
         }
 
-        // Nettoyage des hôtels dont l'île n'existe plus
-        Bukkit.getScheduler().runTask(this, () -> hotels.cleanOrphans());
+        // Nettoyage (optionnel) des hôtels dont l'île n'existe plus, une fois SuperiorSkyblock2 chargé
+        if (configs.config().getBoolean("settings.clean-orphans", false)) {
+            Bukkit.getScheduler().runTaskLater(this, () -> hotels.cleanOrphans(), 20L * 30);
+        }
 
         // Minage des minions (toutes les 5 ticks)
         Bukkit.getScheduler().runTaskTimer(this, () -> hotels.tickMinions(), 40L, 5L);
@@ -76,9 +78,6 @@ public final class HotelDeVillePlugin extends JavaPlugin {
             hotels.tickUpgrades();
             refreshMenus();
         }, 20L, 20L);
-
-        // Présence des minions
-        Bukkit.getScheduler().runTaskTimer(this, () -> hotels.ensureAllMinions(), 60L, 100L);
 
         // Sauvegarde automatique
         long autosave = Math.max(10, configs.config().getInt("settings.autosave-seconds", 60)) * 20L;
