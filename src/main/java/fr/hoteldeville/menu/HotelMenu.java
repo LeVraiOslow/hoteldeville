@@ -7,6 +7,7 @@ import fr.hoteldeville.manager.Configs;
 import fr.hoteldeville.manager.HotelManager;
 import fr.hoteldeville.model.LevelDef;
 import fr.hoteldeville.model.Requirement;
+import fr.hoteldeville.util.Effects;
 import fr.hoteldeville.util.Items;
 import fr.hoteldeville.util.Text;
 import org.bukkit.Bukkit;
@@ -17,13 +18,23 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-/** Menu /hotel : informations, ressources du prochain niveau, accès au stockage. */
+/**
+ * Menu /hotel. Tout est défini dans menus.yml : chaque entrée de "main.items" est un item libre
+ * (slot ou slots, material, name, lore, glow, action, commands, click-sound, states).
+ * Supprimer une entrée la retire du menu.
+ */
 public final class HotelMenu implements InventoryHolder {
+
+    /** Une zone cliquable du menu. */
+    private record Button(String action, List<String> commands, String sound) {
+    }
 
     private final HotelDeVillePlugin plugin;
     private final UUID playerId;
@@ -32,7 +43,7 @@ public final class HotelMenu implements InventoryHolder {
     private Inventory inventory;
 
     private final Map<Integer, Requirement> requirementSlots = new HashMap<>();
-    private final Map<Integer, String> actions = new HashMap<>();
+    private final Map<Integer, Button> buttons = new HashMap<>();
 
     private HotelMenu(HotelDeVillePlugin plugin, UUID playerId, UUID islandId, int level) {
         this.plugin = plugin;
@@ -98,11 +109,11 @@ public final class HotelMenu implements InventoryHolder {
 
         inventory.clear();
         requirementSlots.clear();
-        actions.clear();
+        buttons.clear();
         int size = inventory.getSize();
         int max = cfg.maxLevel();
 
-        // Remplissage
+        // Remplissage (facultatif)
         ConfigurationSection filler = m.getConfigurationSection("filler");
         if (filler != null && filler.getBoolean("enabled", true)) {
             ItemStack f = Items.build(filler);
@@ -114,6 +125,8 @@ public final class HotelMenu implements InventoryHolder {
         boolean atMax = d.level >= max;
         String maxText = cfg.raw("max");
         Inventory storage = hotels.storage(d);
+        String state = hotels.minionState(d);
+        String statusText = m.getString("status." + state, state);
         String[] kv = new String[]{
                 "level", String.valueOf(d.level),
                 "max", String.valueOf(max),
@@ -127,24 +140,35 @@ public final class HotelMenu implements InventoryHolder {
                 "xp", cfg.factorFormatted("xp", d.level),
                 "xp_next", atMax ? maxText : cfg.factorFormatted("xp", next),
                 "used", String.valueOf(hotels.usedSlots(storage)),
-                "capacity", String.valueOf(storage.getSize())
+                "capacity", String.valueOf(storage.getSize()),
+                "status", statusText,
+                "minion_state", state
         };
 
-        // Items fixes (info, stats, storage, close, ...)
+        // Items libres définis dans menus.yml
         ConfigurationSection items = m.getConfigurationSection("items");
         if (items != null) {
             for (String key : items.getKeys(false)) {
                 ConfigurationSection s = items.getConfigurationSection(key);
                 if (s == null) continue;
-                int slot = s.getInt("slot", -1);
-                if (slot < 0 || slot >= size) continue;
-                inventory.setItem(slot, Items.build(s, kv));
-                String def = key.equalsIgnoreCase("storage") ? "STORAGE" : key.equalsIgnoreCase("close") ? "CLOSE" : "NONE";
-                actions.put(slot, s.getString("action", def).toUpperCase());
+                List<Integer> slots = new ArrayList<>();
+                if (s.isList("slots")) slots.addAll(s.getIntegerList("slots"));
+                if (s.contains("slot")) slots.add(s.getInt("slot"));
+                if (slots.isEmpty()) continue;
+
+                String action = s.getString("action", defaultAction(key)).toUpperCase(Locale.ROOT);
+                ConfigurationSection override = s.getConfigurationSection("states." + stateFor(action, state));
+                ItemStack item = Items.build(s, override, kv);
+                Button button = new Button(action, s.getStringList("commands"), s.getString("click-sound", ""));
+                for (int slot : slots) {
+                    if (slot < 0 || slot >= size) continue;
+                    inventory.setItem(slot, item.clone());
+                    buttons.put(slot, button);
+                }
             }
         }
 
-        // Zone centrale : amélioration en cours / niveau max / ressources
+        // Zone des ressources : amélioration en cours / niveau max / ressources à valider
         if (d.isUpgrading()) {
             ConfigurationSection u = m.getConfigurationSection("upgrading");
             if (u != null) {
@@ -157,11 +181,11 @@ public final class HotelMenu implements InventoryHolder {
                         "time_left", Text.formatDuration((left + 999) / 1000),
                         "progress", bar(m, ratio),
                         "percent", String.valueOf(percent));
-                put(u.getInt("slot", 22), Items.build(u, ukv));
+                put(u, Items.build(u, ukv));
             }
         } else if (atMax) {
             ConfigurationSection mx = m.getConfigurationSection("max-level");
-            if (mx != null) put(mx.getInt("slot", 22), Items.build(mx, kv));
+            if (mx != null) put(mx, Items.build(mx, kv));
         } else {
             LevelDef def = cfg.level(d.level + 1);
             if (def != null) {
@@ -178,14 +202,37 @@ public final class HotelMenu implements InventoryHolder {
                     }
                     if (slot < 0 || slot >= size) continue;
                     inventory.setItem(slot, requirementItem(viewer, d, r));
+                    buttons.remove(slot);
                     requirementSlots.put(slot, r);
                 }
             }
         }
     }
 
-    private void put(int slot, ItemStack item) {
-        if (slot >= 0 && slot < inventory.getSize()) inventory.setItem(slot, item);
+    private static String defaultAction(String key) {
+        return switch (key.toLowerCase(Locale.ROOT)) {
+            case "storage" -> "STORAGE";
+            case "close" -> "CLOSE";
+            case "toggle", "minion", "start", "power" -> "TOGGLE_MINION";
+            default -> "NONE";
+        };
+    }
+
+    /** Clé "states.<x>" à appliquer pour une action donnée. */
+    private static String stateFor(String action, String minionState) {
+        return action.equals("TOGGLE_MINION") ? minionState : "none";
+    }
+
+    private void put(ConfigurationSection sec, ItemStack item) {
+        List<Integer> slots = new ArrayList<>(sec.getIntegerList("slots"));
+        if (sec.contains("slot")) slots.add(sec.getInt("slot"));
+        if (slots.isEmpty()) slots.add(22);
+        for (int slot : slots) {
+            if (slot >= 0 && slot < inventory.getSize()) {
+                inventory.setItem(slot, item.clone());
+                buttons.remove(slot);
+            }
+        }
     }
 
     private static String[] append(String[] base, String... extra) {
@@ -264,13 +311,38 @@ public final class HotelMenu implements InventoryHolder {
             render();
             return;
         }
-        String action = actions.get(slot);
-        if (action == null) return;
-        switch (action) {
+        Button button = buttons.get(slot);
+        if (button == null) return;
+
+        if (!button.sound().isBlank()) Effects.play(player, button.sound());
+
+        switch (button.action()) {
             case "STORAGE" -> player.openInventory(plugin.hotels().storage(d));
             case "CLOSE" -> player.closeInventory();
+            case "TOGGLE_MINION" -> {
+                plugin.hotels().toggleMinion(player, d);
+                render();
+            }
             default -> {
-                // aucune action
+                // NONE : aucune action intégrée
+            }
+        }
+        runCommands(player, button.commands());
+    }
+
+    /** Commandes de l'item : "[player] cmd", "[console] cmd", "[message] texte", "[close]". {player} disponible. */
+    private void runCommands(Player player, List<String> commands) {
+        for (String raw : commands) {
+            String line = raw.trim().replace("{player}", player.getName());
+            String lower = line.toLowerCase(Locale.ROOT);
+            if (lower.startsWith("[player]")) {
+                Bukkit.dispatchCommand(player, line.substring(8).trim().replaceFirst("^/", ""));
+            } else if (lower.startsWith("[console]")) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), line.substring(9).trim().replaceFirst("^/", ""));
+            } else if (lower.startsWith("[message]")) {
+                player.sendMessage(Text.color(line.substring(9).trim()));
+            } else if (lower.startsWith("[close]")) {
+                player.closeInventory();
             }
         }
     }
