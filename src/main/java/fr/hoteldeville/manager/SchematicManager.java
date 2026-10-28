@@ -8,16 +8,12 @@ import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
-import com.sk89q.worldedit.extent.transform.BlockTransformExtent;
 import com.sk89q.worldedit.math.BlockVector3;
-import com.sk89q.worldedit.math.Vector3;
-import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.world.block.BaseBlock;
 import fr.hoteldeville.data.HotelData;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.block.Container;
 
 import java.io.File;
@@ -53,49 +49,31 @@ public final class SchematicManager {
         }
     }
 
-    /** Position (dans le monde) d'un bloc du clipboard une fois collé en (x,y,z) avec la rotation donnée. */
-    private BlockVector3 map(Clipboard clipboard, AffineTransform t, BlockVector3 pos, int x, int y, int z) {
-        Vector3 v = t.apply(pos.subtract(clipboard.getOrigin()).toVector3());
-        return BlockVector3.at(x + (int) Math.round(v.x()), y + (int) Math.round(v.y()), z + (int) Math.round(v.z()));
+    /** Position (dans le monde) d'un bloc du clipboard une fois collé en (x,y,z). */
+    private BlockVector3 map(Clipboard clipboard, BlockVector3 pos, int x, int y, int z) {
+        return pos.subtract(clipboard.getOrigin()).add(x, y, z);
     }
 
-    /** Angle (0/90/180/270) à appliquer pour que l'avant de la schématique (face {@code from}) regarde vers {@code to}. */
-    public int angleBetween(BlockFace from, BlockFace to) {
-        for (int k = 0; k < 360; k += 90) {
-            Vector3 v = new AffineTransform().rotateY(k).apply(Vector3.at(from.getModX(), 0, from.getModZ()));
-            if ((int) Math.round(v.x()) == to.getModX() && (int) Math.round(v.z()) == to.getModZ()) return k;
-        }
-        return 0;
-    }
-
-    /** Limites {minX,minY,minZ,maxX,maxY,maxZ} de la structure une fois collée en (x,y,z) avec la rotation donnée. */
-    public int[] bounds(Clipboard clipboard, int x, int y, int z, int rotation) {
-        AffineTransform t = new AffineTransform().rotateY(rotation);
-        BlockVector3 lo = clipboard.getMinimumPoint(), hi = clipboard.getMaximumPoint();
-        int[] r = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
-        for (int cx : new int[]{lo.x(), hi.x()}) for (int cy : new int[]{lo.y(), hi.y()}) for (int cz : new int[]{lo.z(), hi.z()}) {
-            BlockVector3 m = map(clipboard, t, BlockVector3.at(cx, cy, cz), x, y, z);
-            r[0] = Math.min(r[0], m.x()); r[1] = Math.min(r[1], m.y()); r[2] = Math.min(r[2], m.z());
-            r[3] = Math.max(r[3], m.x()); r[4] = Math.max(r[4], m.y()); r[5] = Math.max(r[5], m.z());
-        }
-        return r;
+    /** Limites {minX,minY,minZ,maxX,maxY,maxZ} de la structure une fois collée en (x,y,z). */
+    public int[] bounds(Clipboard clipboard, int x, int y, int z) {
+        BlockVector3 min = map(clipboard, clipboard.getMinimumPoint(), x, y, z);
+        BlockVector3 max = map(clipboard, clipboard.getMaximumPoint(), x, y, z);
+        return new int[]{min.x(), min.y(), min.z(), max.x(), max.y(), max.z()};
     }
 
     /**
-     * Colle la schématique en (x,y,z) avec la rotation donnée. L'air de la schématique n'efface jamais rien ;
+     * Colle la schématique en (x,y,z). L'air de la schématique n'efface jamais rien ;
      * selon {@code keep}, les blocs déjà présents sont conservés (la schématique s'adapte autour).
      *
      * @return les positions (packées, voir {@link HotelData#pack}) où un bloc existant a été conservé
      */
-    public Set<Long> paste(Clipboard clipboard, World world, int x, int y, int z, int rotation, KeepMode keep) throws WorldEditException {
-        AffineTransform t = new AffineTransform().rotateY(rotation);
-        BlockTransformExtent source = new BlockTransformExtent(clipboard, t); // oriente aussi les escaliers, portes, etc.
+    public Set<Long> paste(Clipboard clipboard, World world, int x, int y, int z, KeepMode keep) throws WorldEditException {
         Set<Long> kept = new HashSet<>();
         try (EditSession session = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world))) {
             for (BlockVector3 pos : clipboard.getRegion()) {
-                BaseBlock block = source.getFullBlock(pos);
+                BaseBlock block = clipboard.getFullBlock(pos);
                 if (block.getBlockType().getMaterial().isAir()) continue;
-                BlockVector3 target = map(clipboard, t, pos, x, y, z);
+                BlockVector3 target = map(clipboard, pos, x, y, z);
                 if (keep != KeepMode.NONE) {
                     Block existing = world.getBlockAt(target.x(), target.y(), target.z());
                     boolean conserve = keep == KeepMode.ALL
@@ -113,19 +91,18 @@ public final class SchematicManager {
     }
 
     /**
-     * Retire uniquement les blocs appartenant à la schématique (collée en x,y,z avec la rotation donnée).
+     * Retire uniquement les blocs appartenant à la schématique (collée en x,y,z).
      * Un bloc n'est retiré que s'il est toujours du type prévu par la schématique et n'a pas été conservé
      * à la pose : tout ce que les joueurs ont posé dans le bâtiment (coffres, fours, etc.) reste en place.
      *
      * @return le nombre de blocs retirés
      */
-    public int clear(Clipboard clipboard, World world, int x, int y, int z, int rotation, Set<Long> kept) {
-        AffineTransform t = new AffineTransform().rotateY(rotation);
+    public int clear(Clipboard clipboard, World world, int x, int y, int z, Set<Long> kept) {
         int removed = 0;
         for (BlockVector3 pos : clipboard.getRegion()) {
             var state = clipboard.getBlock(pos);
             if (state.getBlockType().getMaterial().isAir()) continue;
-            BlockVector3 target = map(clipboard, t, pos, x, y, z);
+            BlockVector3 target = map(clipboard, pos, x, y, z);
             if (kept != null && kept.contains(HotelData.pack(target.x(), target.y(), target.z()))) continue;
             Material expected = BukkitAdapter.adapt(state.getBlockType());
             Block b = world.getBlockAt(target.x(), target.y(), target.z());
