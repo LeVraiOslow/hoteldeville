@@ -1,22 +1,47 @@
 # ╔══════════════════════════════════════════════════════════════╗
 # ║                    HotelDeVille - menus.yml                  ║
 # ╚══════════════════════════════════════════════════════════════╝
-# Couleurs : &a &c ... et hexadécimal (&#RRGGBB, <#RRGGBB>, #RRGGBB)
-# Items : MATERIAL vanilla ou nexo:nom_item   (clé "material")
-# Slots : de 0 (haut gauche) à 53 (bas droite) pour 54 slots.
+# CE FICHIER EST ENTIÈREMENT MODIFIABLE : aucune valeur par défaut n'est ajoutée en cache.
+# Tout ce que vous supprimez ici disparaît réellement du menu (items, remplissage, barre de progression...).
 #
-# Chaque item accepte : slot, material, amount, name, lore, glow, action (STORAGE, CLOSE ou NONE)
-# Placeholders disponibles dans chaque section : voir les commentaires.
+# Couleurs : &a &c ... et hexadécimal (&#RRGGBB, <#RRGGBB>, #RRGGBB)
+# Items    : MATERIAL vanilla ou nexo:nom_item   (clé "material")
+# Slots    : de 0 (haut gauche) à 53 (bas droite) pour un menu de 54 slots.
+#
+# ── Items libres : main.items ──
+# Chaque entrée de "main.items" est un item du menu. Le nom de l'entrée est libre.
+# Clés possibles :
+#   slot: 4               un slot
+#   slots: [0, 1, 2]      plusieurs slots (identique, cumulable avec slot)
+#   material, amount, name, lore, glow
+#   action:               STORAGE | TOGGLE_MINION | CLOSE | NONE (NONE par défaut)
+#   click-sound: "UI_BUTTON_CLICK"
+#   commands:             liste exécutée au clic : "[player] cmd", "[console] cmd", "[message] texte", "[close]"
+#   states:               (TOGGLE_MINION) surcharge de l'item selon l'état du minion : active | inactive | full
+#
+# Placeholders disponibles dans name/lore des items :
+#   {level} {max} {next_level}
+#   {speed} {speed_next} {storage} {storage_next} {money} {money_next} {xp} {xp_next}
+#   {used} {capacity}  (slots du stockage utilisés / total)
+#   {status}           texte de l'état du minion (voir main.status)
+#   {minion_state}     active | inactive | full
 
 main:
   # {level} = niveau actuel, {max} = niveau maximum
   title: "&8Hôtel de Ville &7- Niveau &e{level}&7/&e{max}"
   size: 54          # 9, 18, 27, 36, 45 ou 54
 
-  filler:           # Remplissage des slots vides
+  # Remplissage des slots vides (supprimez toute cette section pour ne rien remplir)
+  filler:
     enabled: true
     material: BLACK_STAINED_GLASS_PANE
     name: " "
+
+  # Texte de {status} selon l'état du minion
+  status:
+    active: "&aEn marche"
+    inactive: "&cArrêté"
+    full: "&6Arrêté (stockage plein)"
 
   # Slots utilisés (dans l'ordre) pour les ressources du niveau en cours.
   # Une ressource peut forcer son slot avec "slot:" dans levels.yml.
@@ -28,7 +53,6 @@ main:
       material: NETHER_STAR
       name: "&6&lHôtel de Ville"
       glow: true
-      # {level} {max} {next_level}
       lore:
         - "&7Niveau actuel : &e{level}&7/&e{max}"
         - "&7Prochain niveau : &a{next_level}"
@@ -40,17 +64,51 @@ main:
       slot: 40
       material: ENCHANTED_BOOK
       name: "&e&lStatistiques du minion"
-      # {speed} {storage} {money} {xp} = valeur actuelle ; *_next = valeur au prochain niveau
       lore:
         - "&bVitesse &7: &f{speed} &8→ &a{speed_next}"
         - "&6Stockage &7: &f{storage} &8→ &a{storage_next}"
         - "&aMonnaie &7: &f{money} &8→ &a{money_next}"
         - "&dExpérience &7: &f{xp} &8→ &a{xp_next}"
 
+    # Bouton démarrer / arrêter le minion
+    toggle:
+      slot: 48
+      action: TOGGLE_MINION
+      click-sound: "UI_BUTTON_CLICK"
+      material: GRAY_DYE            # valeurs par défaut, surchargées par "states" ci-dessous
+      name: "&eMinion"
+      states:
+        active:
+          material: LIME_DYE
+          name: "&a&lMinion en marche"
+          glow: true
+          lore:
+            - "&7État : {status}"
+            - "&7Vitesse : &f{speed}"
+            - ""
+            - "&eClic pour arrêter le minion"
+        inactive:
+          material: RED_DYE
+          name: "&c&lMinion arrêté"
+          lore:
+            - "&7État : {status}"
+            - "&7Vitesse : &f{speed}"
+            - ""
+            - "&eClic pour mettre le minion en route"
+        full:
+          material: ORANGE_DYE
+          name: "&6&lStockage plein"
+          lore:
+            - "&7État : {status}"
+            - "&7Le minion s'est arrêté automatiquement."
+            - ""
+            - "&7Videz le stockage puis relancez-le."
+
     storage:
       slot: 49
       material: CHEST
       name: "&6&lStockage du minion"
+      action: STORAGE
       # {used} = slots utilisés, {capacity} = capacité
       lore:
         - "&7Récupérez les ressources minées."
@@ -62,9 +120,19 @@ main:
       slot: 53
       material: BARRIER
       name: "&cFermer"
-      lore: []
+      action: CLOSE
 
-  # Affiché à la place des ressources pendant une amélioration.
+    # Exemple d'item personnalisé (retirez le # pour l'activer) :
+    # warp:
+    #   slot: 45
+    #   material: ENDER_PEARL
+    #   name: "&dRetour à l'île"
+    #   lore: ["&7Clic pour vous téléporter"]
+    #   commands:
+    #     - "[player] is go"
+    #     - "[close]"
+
+  # Affiché à la place des ressources pendant une amélioration (slot/slots possible).
   # {target_level} {time_left} {progress} (barre) {percent}
   upgrading:
     slot: 22
@@ -92,7 +160,6 @@ main:
     empty: "&7|"
 
   # Affichage des ressources.
-  # (voir plus bas pour l'inventaire du stockage : section "storage")
   requirement:
     # Icône par défaut selon le type (les ITEM utilisent l'item demandé)
     icons:

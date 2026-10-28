@@ -7,6 +7,7 @@
 settings:
   max-level: 12                 # Niveau maximum de l'hôtel de ville (12 par défaut)
   autosave-seconds: 60          # Sauvegarde automatique des données
+  clean-orphans: false          # true = au démarrage, réinitialise les hôtels dont l'île n'existe plus
   time-units:                   # Unités utilisées pour afficher les durées
     day: "j"
     hour: "h"
@@ -37,32 +38,24 @@ hotel:
   sound-upgrade: "ENTITY_PLAYER_LEVELUP" # Son joué à la fin d'une amélioration
 
 # ───────────────────────── ONEBLOCK ─────────────────────────
-# Position du bloc générateur du OneBlock, relative au centre de l'île.
+# Le minion casse le bloc générateur du module SSBOneBlock de SuperiorSkyblock2.
+# Sa position = centre de l'île + décalage "block-offset" du module (modules/OneBlock/config.yml).
 oneblock:
-  environment: NORMAL           # NORMAL, NETHER ou THE_END
-  offset: { x: 0, y: 0, z: 0 }  # Ajustez pour viser votre bloc générateur
+  offset-source: MODULE         # MODULE = lit block-offset dans la config du module OneBlock (recommandé)
+                                # CONFIG = utilise "offset" ci-dessous
+  offset: { x: 0, y: -1, z: 0 } # Utilisé seulement si offset-source: CONFIG
 
 # ───────────────────────── MINION ─────────────────────────
+# Le minion est invisible : il n'y a aucune entité, seul le bloc générateur est cassé.
+# Il se lance / s'arrête avec le bouton du menu /hotel et s'arrête tout seul quand le stockage est plein.
 minion:
   enabled: true
-  # Position d'apparition du minion, relative à la position de collage (shulker posée)
-  spawn-offset: { x: 0.5, y: 1.0, z: 0.5 }
-  name: "&6Minion &7[Niv. &e{level}&7]"
-  show-name: true
-  arms: true
-  small: false
-  base-plate: false
-  equipment:                    # Material ou nexo:nom_item ("" = rien)
-    helmet: "LEATHER_HELMET"
-    chestplate: "LEATHER_CHESTPLATE"
-    leggings: "LEATHER_LEGGINGS"
-    boots: "LEATHER_BOOTS"
-    hand: "IRON_PICKAXE"
-  click-action: STORAGE         # STORAGE (ouvre le stockage), MENU (ouvre /hotel) ou NONE
-  tool: "NETHERITE_PICKAXE"     # Outil utilisé pour calculer les drops
-  fire-break-event: true        # Appelle un BlockBreakEvent (compatible avec les plugins OneBlock qui régénèrent le bloc)
+  active-on-build: false        # true = le minion démarre dès que l'hôtel est construit
+  # DIRECT : le minion casse avec son propre outil (minion.tool), fonctionne même hors-ligne (recommandé)
+  # EVENT  : simule la casse par un membre connecté (BlockBreakEvent) ; drops selon l'outil tenu par ce membre
+  break-mode: DIRECT
+  tool: "NETHERITE_PICKAXE"     # Outil du minion en mode DIRECT (MATERIAL ou nexo:nom_item) : détermine les drops
   only-when-members-online: false  # true = ne mine que si un membre de l'île est connecté
-  on-storage-full: PAUSE        # PAUSE (le minion s'arrête) ou VOID (les drops sont perdus)
   ignored-blocks: [AIR, CAVE_AIR, VOID_AIR, BEDROCK, BARRIER]
   effects:
     sound: "BLOCK_STONE_BREAK"  # "" = aucun

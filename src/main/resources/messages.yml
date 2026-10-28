@@ -57,8 +57,11 @@ hotel:
   upgrade-finished: "&6Votre hôtel de ville est maintenant au niveau &e{level}&6 !"
 
 minion:
-  storage-full: "&cLe stockage de votre minion est plein !"
-  not-yours: "&cCe minion n'appartient pas à votre île."
+  started: "&aLe minion est &lmis en route&a."
+  stopped: "&cLe minion est &larrêté&c."
+  stopped-full: "&cLe stockage du minion est plein : il s'est arrêté. Videz-le puis relancez-le depuis &e/hotel&c."
+  cannot-start-full: "&cLe stockage du minion est plein. Videz-le avant de le relancer."
+  disabled: "&cLes minions sont désactivés."
 
 admin:
   level-set: "&aNiveau de l'hôtel de &f{player}&a défini à &e{level}&a."
